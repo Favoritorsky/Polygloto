@@ -38,3 +38,13 @@ describe('publicCourses', () => {
     await assertFails(deleteDoc(doc(as(env, 'admin'), 'publicCourses/c1')));
   });
 });
+
+describe('catalogMeta', () => {
+  it('список языков читают все, но никто из клиентов не пишет', async () => {
+    await seed(env, 'catalogMeta/languages', { items: [] });
+    await assertSucceeds(getDoc(doc(anon(env), 'catalogMeta/languages')));
+    await assertFails(setDoc(doc(as(env, 'alice'), 'catalogMeta/languages'), { items: [{ key: 'x', name: 'x', count: 999 }] }));
+    await assertFails(setDoc(doc(as(env, 'admin'), 'catalogMeta/languages'), { items: [] }));
+    await assertFails(deleteDoc(doc(as(env, 'admin'), 'catalogMeta/languages')));
+  });
+});

@@ -14,3 +14,4 @@ export { setUserBan } from './src/admin/setUserBan.js';
 export { addComment } from './src/comments/addComment.js';
 export { onCommentDeleted } from './src/comments/onCommentDeleted.js';
 export { onRatingWritten } from './src/ratings/onRatingWritten.js';
+export { onPublicCourseWritten } from './src/catalog/onPublicCourseWritten.js';

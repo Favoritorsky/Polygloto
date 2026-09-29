@@ -24,6 +24,8 @@ publicCourses/{courseId}      ← опубликованный снимок. П�
   lessons/{lessonId}            Читают все.
   reference/{sectionId}
   dictionary/{wordId}
+
+catalogMeta/languages         ← список языков для фильтра каталога (пишет триггер)
 ```
 
 Когда админ одобряет курс, функция `moderateCourse` копирует рабочую версию
@@ -172,11 +174,29 @@ ID документа детерминирован — это и есть «од
 | `searchKeywords` | array of string | Префиксы слов названия и языка (`buildSearchKeywords`) для поиска |
 | `likesCount`, `dislikesCount` | number | Денормализованные агрегаты (пишет `onRatingWritten`) |
 | `score` | number | `likesCount − dislikesCount` — сортировка «по рейтингу» |
+| `commentsCount` | number | Счётчик комментариев (пишут `addComment` / `onCommentDeleted`) |
+| `toc` | map | `{ lessons: [{id, title}], reference: [{id, title}] }` — оглавление без загрузки разделов |
 | `lessonsCount`, `wordsCount` | number | Для витрины |
 | `publishedAt` | timestamp | Первая публикация |
 | `updatedAt` | timestamp | Последнее одобрение |
 
 Подколлекции `lessons`, `reference`, `dictionary` — копии рабочих, те же поля.
+
+### Запросы каталога
+
+Поиск: `searchKeywords array-contains <самое длинное слово запроса>`, остальные
+слова проверяются на клиенте по тому же полю (`src/catalog/catalogQuery.js`).
+Фильтр по языку: `languageLower == …`. Сортировка: `score desc`,
+`likesCount desc`, `dislikesCount asc`, `publishedAt desc`. Все сочетания
+покрыты составными индексами в `firestore.indexes.json` (эмулятор индексы не
+требует, продакшен — требует).
+
+## `catalogMeta/languages`
+
+Список языков опубликованных курсов для фильтра каталога. Пишет только
+триггер `onPublicCourseWritten` (пересчёт `count()` по затронутым языкам),
+читают все.
+`{ items: [{ key: languageLower, name: language, count }] }`, отсортировано по названию.
 
 ## `rateLimits/{uid}`
 

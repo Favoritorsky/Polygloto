@@ -11,6 +11,7 @@ import ForgotPasswordPage from './pages/auth/ForgotPasswordPage.jsx';
 import LoginPage from './pages/auth/LoginPage.jsx';
 import RegisterPage from './pages/auth/RegisterPage.jsx';
 import MyCoursesPage from './pages/courses/MyCoursesPage.jsx';
+import CatalogPage from './pages/catalog/CatalogPage.jsx';
 import CoursePage from './pages/course/CoursePage.jsx';
 import CourseEditorPage from './pages/editor/CourseEditorPage.jsx';
 import AdminPage from './pages/admin/AdminPage.jsx';
@@ -66,6 +67,7 @@ export default function App() {
               </RequireAuth>
             }
           />
+          <Route path="catalog" element={<CatalogPage />} />
           <Route path="course/:courseId" element={<CoursePage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>

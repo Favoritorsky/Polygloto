@@ -259,6 +259,13 @@ service cloud.firestore {
       }
     }
 
+    // ---------- catalogMeta/{docId} ----------
+    // Служебные данные каталога (список языков). Пишет только Cloud Function.
+    match /catalogMeta/{docId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
     // ---------- rateLimits/{uid} ----------
     // Служебная коллекция Cloud Functions — клиенту закрыта.
     match /rateLimits/{uid} {
