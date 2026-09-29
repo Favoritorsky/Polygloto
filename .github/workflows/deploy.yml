@@ -71,7 +71,8 @@ jobs:
           ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
         run: node scripts/ensure-admin.mjs
       - name: Адрес сайта
-        run: echo "Сайт: https://$FIREBASE_PROJECT_ID.web.app" >> "$GITHUB_STEP_SUMMARY"
+        run: |
+          echo "Сайт: https://$FIREBASE_PROJECT_ID.web.app" >> "$GITHUB_STEP_SUMMARY"
 
   admin:
     if: github.event_name == 'schedule'
