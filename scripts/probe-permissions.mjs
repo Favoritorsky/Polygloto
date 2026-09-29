@@ -15,7 +15,7 @@ const probes = {
   'identity: get config': `https://identitytoolkit.googleapis.com/admin/v2/projects/${project}/config`,
 };
 for (const [name, url] of Object.entries(probes)) {
-  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}`, 'x-goog-user-project': project } });
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
   const body = await res.text();
   console.log(`${res.status} ${name}${res.ok ? '' : ` — ${body.slice(0, 200).replace(/\s+/g, ' ')}`}`);
 }
