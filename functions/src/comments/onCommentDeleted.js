@@ -1,7 +1,10 @@
-// После удаления комментария: уменьшить счётчик курса и убрать реакции на него.
+// После удаления комментария: пересчитать счётчики курса и автора комментария
+// и убрать реакции на него. Счётчики пересчитываются count()-запросами, а не
+// уменьшаются на 1: повторная доставка события их не испортит, а удалённый
+// модератором спам перестаёт засчитываться в бейдж «Собеседник».
 import { onDocumentDeleted } from 'firebase-functions/v2/firestore';
 import { COLLECTIONS, SUBCOLLECTIONS } from '../../shared/schema.js';
-import { db, FieldValue } from '../admin.js';
+import { db } from '../admin.js';
 
 export const onCommentDeleted = onDocumentDeleted(
   `${COLLECTIONS.COURSES}/{courseId}/${SUBCOLLECTIONS.COMMENTS}/{commentId}`,
@@ -18,8 +21,19 @@ export const onCommentDeleted = onDocumentDeleted(
     const writer = db.bulkWriter();
     reactions.docs.forEach((d) => writer.delete(d.ref));
     await writer.close();
-    // Курс мог быть удалён целиком — тогда счётчик обновлять не нужно.
-    const publicSnap = await publicRef.get();
-    if (publicSnap.exists) await publicRef.update({ commentsCount: FieldValue.increment(-1) });
+    const authorId = event.data?.data()?.authorId;
+    const [courseCount, authorCount] = await Promise.all([
+      db.collection(COLLECTIONS.COURSES).doc(courseId).collection(SUBCOLLECTIONS.COMMENTS).count().get(),
+      authorId ? db.collectionGroup(SUBCOLLECTIONS.COMMENTS).where('authorId', '==', authorId).count().get() : null,
+    ]);
+    // Курс или автор могли быть удалены целиком — тогда обновлять нечего.
+    const ignoreMissing = (error) => {
+      if (error.code !== 5 /* NOT_FOUND */) throw error;
+    };
+    await Promise.all([
+      publicRef.update({ commentsCount: courseCount.data().count }).catch(ignoreMissing),
+      authorCount &&
+        db.collection(COLLECTIONS.USERS).doc(authorId).update({ commentsCount: authorCount.data().count }).catch(ignoreMissing),
+    ]);
   },
 );

@@ -9,6 +9,9 @@ service firebase.storage {
       allow read: if true;
       allow create, update: if request.auth != null
         && request.auth.uid == uid
+        // Заблокированный пользователь не загружает файлы (профиль всё равно не сменить).
+        && firestore.exists(/databases/(default)/documents/users/$(uid))
+        && firestore.get(/databases/(default)/documents/users/$(uid)).data.get('banned', false) != true
         && fileName.matches('[A-Za-z0-9_-]{1,64}[.](jpg|jpeg|png|webp)')
         && request.resource.size > 0
         && request.resource.size <= 2 * 1024 * 1024

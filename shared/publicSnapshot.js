@@ -1,8 +1,10 @@
 // Сборка опубликованного снимка курса из рабочей версии.
 // Сервер не доверяет содержимому черновика: всё проходит через те же
-// функции очистки, что и на клиенте (shared/content.js, shared/tasks.js).
-import { sanitizeBlocks, sanitizeCategories, sanitizeWord } from '../../shared/content.js';
-import { LIMITS, PART_OF_SPEECH_IDS, buildSearchKeywords, normalizeText } from '../../shared/schema.js';
+// функции очистки, что и на клиенте (content.js, tasks.js).
+// Используется Cloud Function moderateCourse (запись снимка) и страницей
+// проверки в админ-панели: модератор видит ровно то, что будет опубликовано.
+import { sanitizeBlocks, sanitizeCategories, sanitizeWord } from './content.js';
+import { LIMITS, PART_OF_SPEECH_IDS, buildSearchKeywords, normalizeText } from './schema.js';
 
 function cleanOrder(order, ids) {
   const known = new Set(ids);

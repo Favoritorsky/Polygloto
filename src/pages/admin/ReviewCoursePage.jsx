@@ -11,7 +11,6 @@ import Field from '../../components/ui/Field.jsx';
 import Tabs from '../../components/ui/Tabs.jsx';
 import { buildDictionaryIndex } from '../../content/dictionaryIndex.js';
 import { useAsync, useSubscription } from '../../hooks/useSubscription.js';
-import { sortByOrder } from '../../model/courseStatus.js';
 import { subscribeToCourse } from '../../services/courseService.js';
 import { toUserMessage } from '../../services/errors.js';
 import { approveCourse, loadCourseContent, rejectCourse } from '../../services/moderationService.js';
@@ -23,14 +22,14 @@ const TABS = [
   { id: 'dictionary', label: 'Словарь' },
 ];
 
-function Sections({ sections, course, dictionary, emptyText }) {
+function Sections({ sections, categories, courseId, dictionary, emptyText }) {
   if (!sections.length) return <p className={styles.muted}>{emptyText}</p>;
   return sections.map((section, i) => (
     <article key={section.id} className={styles.section}>
       <h2>
         {i + 1}. {section.title || 'Без названия'}
       </h2>
-      <ContentRenderer blocks={section.blocks} categories={course.categories} dictionary={dictionary} courseId={course.id} />
+      <ContentRenderer blocks={section.blocks} categories={categories} dictionary={dictionary} courseId={courseId} />
     </article>
   ));
 }
@@ -47,7 +46,7 @@ export default function ReviewCoursePage() {
 
   const courseSub = useSubscription((onData, onError) => subscribeToCourse(courseId, onData, onError), courseId);
   const course = courseSub.data;
-  const content = useAsync(() => loadCourseContent(courseId), course ? `${courseId}:${course.submittedAt?.toMillis?.()}` : null);
+  const content = useAsync(() => loadCourseContent(courseId, course), course ? `${courseId}:${course.submittedAt?.toMillis?.()}` : null);
   const dictionary = useMemo(() => buildDictionaryIndex(content.data?.dictionary ?? []), [content.data]);
 
   async function decide(kind) {
@@ -123,10 +122,10 @@ export default function ReviewCoursePage() {
           <Tabs tabs={TABS} active={tab} onChange={setTab} label="Содержимое курса" />
           <AsyncState loading={content.loading} error={content.error} onRetry={content.retry}>
             {content.data && tab === 'lessons' && (
-              <Sections sections={sortByOrder(content.data.lessons, course.lessonOrder)} course={course} dictionary={dictionary} emptyText="Уроков нет." />
+              <Sections sections={content.data.lessons} categories={content.data.categories} courseId={courseId} dictionary={dictionary} emptyText="Уроков нет." />
             )}
             {content.data && tab === 'reference' && (
-              <Sections sections={sortByOrder(content.data.reference, course.referenceOrder)} course={course} dictionary={dictionary} emptyText="Справочник пуст." />
+              <Sections sections={content.data.reference} categories={content.data.categories} courseId={courseId} dictionary={dictionary} emptyText="Справочник пуст." />
             )}
             {content.data && tab === 'dictionary' && <DictionaryBrowser entries={content.data.dictionary} />}
           </AsyncState>

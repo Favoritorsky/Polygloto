@@ -16,3 +16,4 @@ export { onCommentDeleted } from './src/comments/onCommentDeleted.js';
 export { onRatingWritten } from './src/ratings/onRatingWritten.js';
 export { onPublicCourseWritten } from './src/catalog/onPublicCourseWritten.js';
 export { onUserProfileUpdated } from './src/users/onUserProfileUpdated.js';
+export { onAvatarUploaded } from './src/storage/onAvatarUploaded.js';

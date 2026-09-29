@@ -40,9 +40,13 @@ describe('addComment', () => {
     await expect(c.call(CALLABLES.ADD_COMMENT, { courseId, text: '   ' })).rejects.toMatchObject({ code: 'functions/invalid-argument' });
     await expect(c.call(CALLABLES.ADD_COMMENT, { courseId, text: 'x'.repeat(2001) })).rejects.toMatchObject({ code: 'functions/invalid-argument' });
     await expect(c.call(CALLABLES.ADD_COMMENT, { courseId: 'nope', text: 'Привет' })).rejects.toMatchObject({ code: 'functions/not-found' });
+    // Путь вместо id: без проверки комментарий записался бы во вложенный документ.
+    for (const bad of [`${courseId}/lessons/l1`, '..', '', 42]) {
+      await expect(c.call(CALLABLES.ADD_COMMENT, { courseId: bad, text: 'Привет' })).rejects.toMatchObject({ code: 'functions/invalid-argument' });
+    }
   });
 
-  it('удаление комментария уменьшает счётчик и убирает реакции на него', async () => {
+  it('удаление комментария пересчитывает счётчики курса и автора и убирает реакции', async () => {
     const c = client();
     const user = await signUp(c);
     const courseId = await seedPublished();
@@ -52,6 +56,7 @@ describe('addComment', () => {
     });
     await deleteDoc(doc(c.db, `courses/${courseId}/comments/${commentId}`));
     await waitFor(async () => (await adminDb.doc(`publicCourses/${courseId}`).get()).get('commentsCount') === 0);
+    await waitFor(async () => (await adminDb.doc(`users/${user.uid}`).get()).get('commentsCount') === 0);
     await waitFor(async () => !(await adminDb.doc(`courses/${courseId}/reactions/${user.uid}_comment_${commentId}`).get()).exists);
   });
 });

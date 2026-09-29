@@ -10,8 +10,8 @@ import {
   SUBCOLLECTIONS,
 } from '../../shared/schema.js';
 import { db, FieldValue } from '../admin.js';
-import { requireAdmin, requireString } from '../lib/guards.js';
-import { buildPublicSnapshot } from './buildPublicSnapshot.js';
+import { requireAdmin, requireDocId, requireString } from '../lib/guards.js';
+import { buildPublicSnapshot } from '../../shared/publicSnapshot.js';
 
 async function readCollection(ref) {
   const snap = await ref.get();
@@ -121,7 +121,7 @@ async function writePublicSnapshot(courseRef, snapshot, moderatorId) {
 export const moderateCourse = onCall(async (request) => {
   const { auth } = await requireAdmin(request);
   const { courseId, decision, reason } = request.data ?? {};
-  if (typeof courseId !== 'string' || !courseId) throw new HttpsError('invalid-argument', 'Не указан курс.');
+  requireDocId(courseId, 'курс');
   const courseRef = db.collection(COLLECTIONS.COURSES).doc(courseId);
 
   if (decision === 'reject') {

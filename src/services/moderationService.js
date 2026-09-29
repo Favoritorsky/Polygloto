@@ -6,6 +6,7 @@
 import { collection, getDocs, limit, onSnapshot, orderBy, query, where, startAt, endAt } from 'firebase/firestore';
 import { httpsCallable } from 'firebase/functions';
 import { CALLABLES, COLLECTIONS, COURSE_STATUS, SUBCOLLECTIONS } from '../../shared/schema.js';
+import { buildPublicSnapshot } from '../../shared/publicSnapshot.js';
 import { db, functions } from './firebase.js';
 
 export function subscribeToReviewQueue(onData, onError) {
@@ -23,17 +24,33 @@ export function subscribeToAllCourses(onData, onError) {
 }
 
 /** Весь контент рабочей версии для просмотра модератором. */
-export async function loadCourseContent(courseId) {
+/**
+ * Содержимое курса для проверки — в том виде, в каком оно будет опубликовано:
+ * через ту же очистку, что и в moderateCourse. Черновик пишет автор напрямую,
+ * поэтому сырые данные могут быть испорчены (намеренно или нет) — модератор
+ * их не рендерит.
+ */
+export async function loadCourseContent(courseId, course) {
   const read = async (name) => {
     const snap = await getDocs(collection(db, COLLECTIONS.COURSES, courseId, name));
-    return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    return snap.docs.map((d) => ({ id: d.id, data: d.data() }));
   };
   const [lessons, reference, dictionary] = await Promise.all([
     read(SUBCOLLECTIONS.LESSONS),
     read(SUBCOLLECTIONS.REFERENCE),
     read(SUBCOLLECTIONS.DICTIONARY),
   ]);
-  return { lessons, reference, dictionary };
+  const snapshot = buildPublicSnapshot({ course, author: null, lessons, reference, dictionary });
+  const ordered = (sections, order) => {
+    const byId = new Map(sections.map((s) => [s.id, { id: s.id, ...s.data }]));
+    return order.map((id) => byId.get(id));
+  };
+  return {
+    categories: snapshot.meta.categories,
+    lessons: ordered(snapshot.lessons, snapshot.meta.lessonOrder),
+    reference: ordered(snapshot.reference, snapshot.meta.referenceOrder),
+    dictionary: snapshot.dictionary.map(({ id, data }) => ({ id, ...data })),
+  };
 }
 
 export function approveCourse(courseId) {

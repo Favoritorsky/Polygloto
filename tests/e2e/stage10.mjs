@@ -44,12 +44,16 @@ try {
 
   await page.getByPlaceholder('Поиск по названию или языку').fill(`ГРАММ ${tag}`);
   await page.waitForURL(/q=/);
-  await page.getByText(`Грамматика ${tag} для начинающих`).waitFor();
+  // Без фильтра этот курс тоже может быть на первой странице: ждём именно отфильтрованную выдачу.
+  await page.waitForFunction(() => document.querySelectorAll('article h3').length === 1);
   let list = await titles(page);
   assert(list.length === 1, `поиск по префиксам нескольких слов без учёта регистра: ${list.join(', ')}`);
 
   await page.getByPlaceholder('Поиск по названию или языку').fill(`нэрий ${tag}`);
-  await page.getByText(`Разговорник ${tag}`).waitFor();
+  await page.waitForFunction((t) => {
+    const h = [...document.querySelectorAll('article h3')];
+    return h.length === 1 && h[0].textContent === `Разговорник ${t}`;
+  }, tag);
   assert((await titles(page)).length === 1, 'поиск по названию языка');
 
   await page.getByPlaceholder('Поиск по названию или языку').fill(`${tag} несуществующее`);

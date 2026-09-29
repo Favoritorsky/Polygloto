@@ -81,6 +81,8 @@ try {
 
   await page.getByRole('button', { name: 'Удалить фото' }).click();
   await page.locator('main img').waitFor({ state: 'detached' });
+  // Профиль обновляется раньше, чем удаляется файл: ждём и файл.
+  for (let i = 0; i < 20 && (await avatarFiles(uid)).length > 0; i += 1) await page.waitForTimeout(250);
   assert((await avatarFiles(uid)).length === 0, 'удаление фото убирает файл из хранилища');
   await page.getByLabel('Файл фотографии').setInputFiles(`${fixtures}avatar-wide.png`);
   await page.locator('main img').first().waitFor();

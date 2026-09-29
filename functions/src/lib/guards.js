@@ -48,3 +48,16 @@ export function requireString(value, field, { min = 0, max }) {
   }
   return trimmed;
 }
+
+// Идентификатор документа из данных клиента. Без этой проверки id вида
+// "c1/lessons/l1" превратил бы ссылку на курс в ссылку на вложенный документ
+// (Admin SDK принимает путь из нескольких сегментов), и функция записала бы
+// данные не туда.
+const DOC_ID_RE = /^(?!\.\.?$)(?!__.*__$)[^/]{1,128}$/;
+
+export function requireDocId(value, field) {
+  if (typeof value !== 'string' || !DOC_ID_RE.test(value)) {
+    throw new HttpsError('invalid-argument', `Некорректный идентификатор: «${field}».`);
+  }
+  return value;
+}

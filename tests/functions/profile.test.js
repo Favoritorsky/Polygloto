@@ -46,3 +46,17 @@ describe('onUserDeleted', () => {
     await foreign.delete();
   });
 });
+
+describe('onAvatarUploaded', () => {
+  it('в папке аватаров остаются только три самых новых файла', async () => {
+    const uid = `cap-${Date.now()}`;
+    for (let i = 1; i <= 5; i += 1) {
+      await bucket.file(`avatars/${uid}/${i}.jpg`).save(Buffer.from('x'), { contentType: 'image/jpeg' });
+      await new Promise((r) => setTimeout(r, 30));
+    }
+    const names = async () => (await bucket.getFiles({ prefix: `avatars/${uid}/` }))[0].map((f) => f.name).sort();
+    await waitFor(async () => (await names()).length === 3);
+    expect(await names()).toEqual([3, 4, 5].map((i) => `avatars/${uid}/${i}.jpg`));
+    await bucket.deleteFiles({ prefix: `avatars/${uid}/` });
+  });
+});

@@ -3,13 +3,13 @@
 import { HttpsError, onCall } from 'firebase-functions/v2/https';
 import { COLLECTIONS, LIMITS, RATE_LIMITS, SUBCOLLECTIONS } from '../../shared/schema.js';
 import { db, FieldValue } from '../admin.js';
-import { requireActiveUser, requireString } from '../lib/guards.js';
+import { requireActiveUser, requireDocId, requireString } from '../lib/guards.js';
 import { enforceRateLimit } from '../lib/rateLimit.js';
 
 export const addComment = onCall(async (request) => {
   const { auth, user } = await requireActiveUser(request);
   const { courseId } = request.data ?? {};
-  if (typeof courseId !== 'string' || !courseId) throw new HttpsError('invalid-argument', 'Не указан курс.');
+  requireDocId(courseId, 'курс');
   const text = requireString(request.data?.text, 'Комментарий', { min: LIMITS.COMMENT_MIN, max: LIMITS.COMMENT_MAX });
 
   const publicRef = db.collection(COLLECTIONS.PUBLIC_COURSES).doc(courseId);

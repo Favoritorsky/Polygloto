@@ -19,6 +19,9 @@ firestore.rules       — Security Rules Firestore
 storage.rules         — Security Rules Storage
 tests/rules/          — тесты правил (эмулятор)
 tests/functions/      — интеграционные тесты функций (эмулятор)
+tests/e2e/            — сквозные сценарии в браузере (Playwright), по файлу на этап
+docs/security.md      — модель угроз, итоговый аудит и чек-лист перед запуском
+docs/stage-reports.md — отчёты по этапам разработки
 ```
 
 ## Локальный запуск с эмуляторами (рекомендуется для разработки)
@@ -44,6 +47,8 @@ npm run dev:emu        # в другом терминале; фронтенд н
 3. В консоли включите: Authentication → Email/Password; Firestore (Native mode); Storage.
    Cloud Functions требуют тарифа Blaze.
 4. `firebase deploy` — правила, индексы, функции и хостинг.
+5. Пройдите чек-лист «Перед запуском» в [docs/security.md](docs/security.md)
+   (App Check, защита от перебора email, ограничения API-ключа, бюджет).
 
 ## Как назначить администратора
 
@@ -57,5 +62,9 @@ npm run dev:emu        # в другом терминале; фронтенд н
 npm test                 # юнит-тесты логики
 npm run test:rules       # Security Rules (эмулятор Firestore + Storage)
 npm run test:functions   # Cloud Functions (эмуляторы Auth + Firestore + Functions)
+npm run test:e2e         # браузерные сценарии: нужны запущенные `npm run emulators` и `npm run dev:emu`
 npm run lint
 ```
+
+Если Chromium для Playwright установлен не в стандартное место:
+`CHROMIUM_PATH=/путь/к/chromium npm run test:e2e`.
