@@ -8,7 +8,9 @@ import Button from '../../components/ui/Button.jsx';
 import Tabs from '../../components/ui/Tabs.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
 import { useSubscription } from '../../hooks/useSubscription.js';
+import { buildDictionaryIndex } from '../../content/dictionaryIndex.js';
 import { returnToDraft, subscribeToCourse } from '../../services/courseService.js';
+import { subscribeToDictionary } from '../../services/dictionaryService.js';
 import { toUserMessage } from '../../services/errors.js';
 import { CourseEditorContext } from './courseEditorContext.js';
 import DictionaryTab from './DictionaryTab.jsx';
@@ -33,6 +35,23 @@ export default function CourseEditorPage() {
   const { data: course, loading, error, retry } = useSubscription(
     (onData, onError) => subscribeToCourse(courseId, onData, onError),
     courseId,
+  );
+
+  // Словарь нужен сразу нескольким вкладкам (вкладка словаря, ссылки в уроках, предпросмотр).
+  const dictionarySub = useSubscription(
+    (onData, onError) => subscribeToDictionary(courseId, { published: false }, onData, onError),
+    course ? courseId : null,
+  );
+  const dictionaryEntries = dictionarySub.data;
+  const dictionary = useMemo(
+    () => ({
+      entries: dictionaryEntries,
+      index: buildDictionaryIndex(dictionaryEntries ?? []),
+      loading: dictionarySub.loading,
+      error: dictionarySub.error,
+      retry: dictionarySub.retry,
+    }),
+    [dictionaryEntries, dictionarySub.loading, dictionarySub.error, dictionarySub.retry],
   );
 
   // Актуальный статус для ensureDraft (подписка обновляет его асинхронно).
@@ -64,8 +83,8 @@ export default function CourseEditorPage() {
 
   const readOnly = isBanned || course?.status === COURSE_STATUS.PENDING_REVIEW;
   const contextValue = useMemo(
-    () => (course ? { course, courseId, readOnly, ensureDraft } : null),
-    [course, courseId, readOnly, ensureDraft],
+    () => (course ? { course, courseId, readOnly, ensureDraft, dictionary } : null),
+    [course, courseId, readOnly, ensureDraft, dictionary],
   );
 
   async function handleWithdraw() {

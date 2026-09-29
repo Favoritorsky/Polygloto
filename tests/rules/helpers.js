@@ -41,3 +41,23 @@ export function userProfile(overrides = {}) {
     ...overrides,
   };
 }
+
+/** Рабочая версия курса со значениями по умолчанию. */
+export function course(overrides = {}) {
+  return {
+    authorId: 'alice',
+    title: 'Токипона за 10 уроков',
+    language: 'Токипона',
+    description: '',
+    categories: [],
+    lessonOrder: ['l1'],
+    referenceOrder: [],
+    status: 'draft',
+    rejectionReason: null,
+    hasPublishedVersion: false,
+    submittedAt: null,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+    ...overrides,
+  };
+}

@@ -14,7 +14,7 @@ import {
   arrayUnion,
 } from 'firebase/firestore';
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
-import { anon, as, createEnv, seed, userProfile } from './helpers.js';
+import { anon, as, course, createEnv, seed, userProfile } from './helpers.js';
 
 let env;
 beforeAll(async () => {
@@ -23,25 +23,6 @@ beforeAll(async () => {
 afterAll(async () => {
   await env.cleanup();
 });
-
-export function course(overrides = {}) {
-  return {
-    authorId: 'alice',
-    title: 'Токипона за 10 уроков',
-    language: 'Токипона',
-    description: '',
-    categories: [],
-    lessonOrder: ['l1'],
-    referenceOrder: [],
-    status: 'draft',
-    rejectionReason: null,
-    hasPublishedVersion: false,
-    submittedAt: null,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    ...overrides,
-  };
-}
 
 beforeEach(async () => {
   await env.clearFirestore();

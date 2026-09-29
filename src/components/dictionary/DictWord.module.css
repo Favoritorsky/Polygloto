@@ -1,0 +1,54 @@
+.word {
+  position: relative;
+  cursor: help;
+  border-bottom: 1px dotted var(--color-primary);
+  border-radius: 2px;
+}
+
+.word:hover,
+.word:focus-visible {
+  background: rgb(42 157 143 / 0.12);
+}
+
+.tooltip {
+  position: absolute;
+  left: 0;
+  top: calc(100% + 6px);
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  min-width: 14rem;
+  max-width: 22rem;
+  padding: 0.6rem 0.8rem;
+  background: var(--color-text);
+  color: #fff;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  font-size: 0.9rem;
+  font-weight: 400;
+  font-style: normal;
+  line-height: 1.4;
+  white-space: normal;
+  text-align: left;
+}
+
+.entry {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.head em {
+  opacity: 0.75;
+  font-size: 0.8rem;
+}
+
+.translation {
+  font-size: 0.95rem;
+}
+
+.example {
+  opacity: 0.75;
+  font-style: italic;
+}

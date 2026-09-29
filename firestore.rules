@@ -163,6 +163,29 @@ service cloud.firestore {
         allow create, update: if canWriteContent() && validSection(request.resource.data);
         allow delete: if canWriteContent();
       }
+
+      // Словарь курса. partOfSpeech — из PART_OF_SPEECH_IDS (shared/schema.js).
+      function validWord(d) {
+        return d.keys().hasOnly(['word', 'wordLower', 'translation', 'partOfSpeech',
+                                 'examples', 'notes', 'createdAt', 'updatedAt'])
+          && isStringOfLength(d.word, 1, 100)
+          && isStringOfLength(d.wordLower, 1, 100)
+          && isStringOfLength(d.translation, 1, 300)
+          && d.partOfSpeech in ['noun', 'verb', 'adjective', 'adverb', 'pronoun', 'numeral',
+                                'preposition', 'conjunction', 'particle', 'interjection', 'phrase', 'other']
+          && d.examples is list && d.examples.size() <= 10
+          && isStringOfLength(d.notes, 0, 1000)
+          && d.updatedAt == request.time;
+      }
+
+      match /dictionary/{wordId} {
+        allow read: if canManageCourse(courseData(courseId));
+        allow create: if canWriteContent() && validWord(request.resource.data)
+          && request.resource.data.createdAt == request.time;
+        allow update: if canWriteContent() && validWord(request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt;
+        allow delete: if canWriteContent();
+      }
     }
 
     // ---------- rateLimits/{uid} ----------

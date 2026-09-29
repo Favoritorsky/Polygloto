@@ -1,0 +1,7 @@
+.dictRef {
+  border-bottom: 2px dashed var(--color-primary);
+}
+
+.dictRefBroken {
+  border-bottom: 2px dashed var(--color-danger);
+}

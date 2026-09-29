@@ -1,7 +1,9 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { LIMITS } from '../../../shared/schema.js';
 import ContentRenderer from '../../components/content/ContentRenderer.jsx';
 import ContentEditor from '../../components/editor/ContentEditor.jsx';
+import DictionaryLinkTool from '../../components/editor/DictionaryLinkTool.jsx';
+import { dictionaryLeafExtra } from '../../components/editor/editorLeafExtras.js';
 import AsyncState from '../../components/ui/AsyncState.jsx';
 import Button from '../../components/ui/Button.jsx';
 import SaveIndicator from '../../components/ui/SaveIndicator.jsx';
@@ -31,7 +33,9 @@ export default function SectionEditor({ kind, sectionId }) {
 }
 
 function LoadedSectionEditor({ kind, section, readOnly }) {
-  const { course, courseId, ensureDraft } = useCourseEditor();
+  const { course, courseId, ensureDraft, dictionary } = useCourseEditor();
+  const dictionaryEntries = useMemo(() => dictionary.entries ?? [], [dictionary.entries]);
+  const leafExtra = useMemo(() => dictionaryLeafExtra(dictionary.index.byId), [dictionary.index]);
   const [title, setTitle] = useState(section.title ?? '');
   const [blocks, setBlocks] = useState(section.blocks ?? []);
   const [preview, setPreview] = useState(false);
@@ -82,10 +86,17 @@ function LoadedSectionEditor({ kind, section, readOnly }) {
       </div>
       {preview ? (
         <div className={styles.preview}>
-          <ContentRenderer blocks={blocks} categories={categories} courseId={courseId} />
+          <ContentRenderer blocks={blocks} categories={categories} courseId={courseId} dictionary={dictionary.index} />
         </div>
       ) : (
-        <ContentEditor initialBlocks={blocks} onChange={handleBlocksChange} categories={categories} readOnly={readOnly} />
+        <ContentEditor
+          initialBlocks={blocks}
+          onChange={handleBlocksChange}
+          categories={categories}
+          readOnly={readOnly}
+          renderLeafExtra={leafExtra}
+          extraTools={<DictionaryLinkTool entries={dictionaryEntries} />}
+        />
       )}
     </div>
   );
