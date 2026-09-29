@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LIMITS } from '../../../shared/schema.js';
 import ContentRenderer from '../../components/content/ContentRenderer.jsx';
 import ContentEditor from '../../components/editor/ContentEditor.jsx';
@@ -33,7 +33,7 @@ export default function SectionEditor({ kind, sectionId }) {
 }
 
 function LoadedSectionEditor({ kind, section, readOnly }) {
-  const { course, courseId, ensureDraft, dictionary } = useCourseEditor();
+  const { course, courseId, ensureDraft, dictionary, registerAutosave } = useCourseEditor();
   const dictionaryEntries = useMemo(() => dictionary.entries ?? [], [dictionary.entries]);
   const leafExtra = useMemo(() => dictionaryLeafExtra(dictionary.index.byId), [dictionary.index]);
   const [title, setTitle] = useState(section.title ?? '');
@@ -50,7 +50,8 @@ function LoadedSectionEditor({ kind, section, readOnly }) {
     },
     [courseId, kind, section.id, ensureDraft],
   );
-  const { schedule, status, error, flush } = useAutosave(save);
+  const { schedule, status, error, flush, hasPending } = useAutosave(save);
+  useEffect(() => registerAutosave({ flush, hasPending }), [registerAutosave, flush, hasPending]);
 
   function handleTitleChange(event) {
     const next = event.target.value.slice(0, LIMITS.LESSON_TITLE_MAX);

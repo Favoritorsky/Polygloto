@@ -96,5 +96,7 @@ export function useAutosave(save, delay = AUTOSAVE_DEBOUNCE_MS) {
     return () => window.removeEventListener('beforeunload', onBeforeUnload);
   }, []);
 
-  return { status, error, schedule, flush, hasPending: () => Boolean(pending.current || inFlight.current) };
+  const hasPending = useCallback(() => Boolean(pending.current || inFlight.current), []);
+
+  return { status, error, schedule, flush, hasPending };
 }

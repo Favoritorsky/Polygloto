@@ -79,6 +79,15 @@ export function returnToDraft(courseId) {
   return updateDoc(courseRef(courseId), { status: COURSE_STATUS.DRAFT, updatedAt: serverTimestamp() });
 }
 
+/** Отправка на модерацию. Правила требуют email_verified в токене. */
+export function submitForReview(courseId) {
+  return updateDoc(courseRef(courseId), {
+    status: COURSE_STATUS.PENDING_REVIEW,
+    submittedAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+}
+
 export function deleteCourse(courseId) {
   return deleteDoc(courseRef(courseId));
 }

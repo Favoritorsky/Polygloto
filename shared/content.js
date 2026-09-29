@@ -136,3 +136,20 @@ export function blocksToPlainText(blocks) {
     .map((b) => b.children.map((l) => l.text ?? '').join(''))
     .join('\n');
 }
+
+/** Очищает статью словаря (используется при публикации). */
+export function sanitizeWord(word, partOfSpeechIds) {
+  if (!word || typeof word !== 'object') return null;
+  const clean = {
+    word: cleanString(word.word, LIMITS.WORD_MAX).trim(),
+    translation: cleanString(word.translation, LIMITS.TRANSLATION_MAX).trim(),
+    partOfSpeech: partOfSpeechIds.includes(word.partOfSpeech) ? word.partOfSpeech : 'other',
+    examples: (Array.isArray(word.examples) ? word.examples : [])
+      .map((e) => cleanString(e, LIMITS.WORD_EXAMPLE_MAX).trim())
+      .filter(Boolean)
+      .slice(0, LIMITS.WORD_EXAMPLES_MAX),
+    notes: cleanString(word.notes, LIMITS.WORD_NOTES_MAX).trim(),
+  };
+  if (!clean.word || !clean.translation) return null;
+  return clean;
+}

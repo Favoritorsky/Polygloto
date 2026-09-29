@@ -60,13 +60,15 @@ export async function setRole(uid, role) {
 }
 
 export async function uidOf(email) {
-  const res = await fetch(`${AUTH_EMULATOR}/identitytoolkit.googleapis.com/v1/projects/${PROJECT}/accounts:query`, {
+  const res = await fetch(`${AUTH_EMULATOR}/identitytoolkit.googleapis.com/v1/projects/${PROJECT}/accounts:lookup`, {
     method: 'POST',
     headers: { Authorization: 'Bearer owner', 'Content-Type': 'application/json' },
-    body: JSON.stringify({ expression: [{ email }], returnUserInfo: true }),
+    body: JSON.stringify({ email: [email] }),
   });
   const data = await res.json();
-  return data.userInfo?.[0]?.localId;
+  const uid = data.users?.[0]?.localId;
+  if (!uid) throw new Error(`uidOf: no user ${email}`);
+  return uid;
 }
 
 export function assert(condition, message) {

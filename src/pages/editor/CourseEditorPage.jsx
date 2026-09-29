@@ -81,10 +81,23 @@ export default function CourseEditorPage() {
     await draftPromise.current;
   }, [courseId]);
 
+  // Реестр автосохранений открытых редакторов: перед отправкой на проверку
+  // все несохранённые правки дописываются (в pending_review контент заморожен).
+  const autosaves = useRef(new Set());
+  const registerAutosave = useCallback((entry) => {
+    autosaves.current.add(entry);
+    return () => autosaves.current.delete(entry);
+  }, []);
+  const flushAll = useCallback(async () => {
+    const entries = [...autosaves.current];
+    await Promise.all(entries.map((e) => e.flush()));
+    return entries.every((e) => !e.hasPending());
+  }, []);
+
   const readOnly = isBanned || course?.status === COURSE_STATUS.PENDING_REVIEW;
   const contextValue = useMemo(
-    () => (course ? { course, courseId, readOnly, ensureDraft, dictionary } : null),
-    [course, courseId, readOnly, ensureDraft, dictionary],
+    () => (course ? { course, courseId, readOnly, ensureDraft, dictionary, registerAutosave, flushAll } : null),
+    [course, courseId, readOnly, ensureDraft, dictionary, registerAutosave, flushAll],
   );
 
   async function handleWithdraw() {

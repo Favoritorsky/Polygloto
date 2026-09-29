@@ -9,3 +9,5 @@ export { onUserCreated, onUserDeleted } from './src/auth/onUserCreated.js';
 export { syncRole } from './src/auth/syncRole.js';
 export { createCourse } from './src/courses/createCourse.js';
 export { onCourseDeleted } from './src/courses/onCourseDeleted.js';
+export { moderateCourse } from './src/moderation/moderateCourse.js';
+export { setUserBan } from './src/admin/setUserBan.js';

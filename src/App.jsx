@@ -12,6 +12,8 @@ import LoginPage from './pages/auth/LoginPage.jsx';
 import RegisterPage from './pages/auth/RegisterPage.jsx';
 import MyCoursesPage from './pages/courses/MyCoursesPage.jsx';
 import CourseEditorPage from './pages/editor/CourseEditorPage.jsx';
+import AdminPage from './pages/admin/AdminPage.jsx';
+import ReviewCoursePage from './pages/admin/ReviewCoursePage.jsx';
 
 export default function App() {
   if (!isFirebaseConfigured) return <ConfigMissingPage />;
@@ -44,6 +46,22 @@ export default function App() {
             element={
               <RequireAuth>
                 <CourseEditorPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="admin"
+            element={
+              <RequireAuth adminOnly>
+                <AdminPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="admin/review/:courseId"
+            element={
+              <RequireAuth adminOnly>
+                <ReviewCoursePage />
               </RequireAuth>
             }
           />

@@ -188,6 +188,18 @@ service cloud.firestore {
       }
     }
 
+    // ---------- publicCourses/{courseId} — опубликованный снимок ----------
+    // Пишет только Cloud Function moderateCourse (и счётчики — onRatingWritten).
+    match /publicCourses/{courseId} {
+      allow read: if true;
+      allow write: if false;
+
+      match /{section}/{docId} {
+        allow read: if section in ['lessons', 'reference', 'dictionary'];
+        allow write: if false;
+      }
+    }
+
     // ---------- rateLimits/{uid} ----------
     // Служебная коллекция Cloud Functions — клиенту закрыта.
     match /rateLimits/{uid} {

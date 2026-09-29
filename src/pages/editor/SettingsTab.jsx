@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LIMITS } from '../../../shared/schema.js';
 import CategoryEditor from '../../components/course/CategoryEditor.jsx';
@@ -14,7 +14,7 @@ import styles from './SettingsTab.module.css';
 
 /** Метаданные курса, категории разметки и удаление. */
 export default function SettingsTab() {
-  const { course, courseId, readOnly, ensureDraft } = useCourseEditor();
+  const { course, courseId, readOnly, ensureDraft, registerAutosave } = useCourseEditor();
   const navigate = useNavigate();
   // Локальная копия: входящие снимки не перетирают то, что сейчас печатается.
   const [form, setForm] = useState(() => ({
@@ -35,6 +35,8 @@ export default function SettingsTab() {
     [courseId, ensureDraft],
   );
   const autosave = useAutosave(save);
+  const { flush, hasPending } = autosave;
+  useEffect(() => registerAutosave({ flush, hasPending }), [registerAutosave, flush, hasPending]);
 
   function change(patch) {
     const next = { ...form, ...patch };
