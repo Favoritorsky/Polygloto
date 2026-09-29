@@ -1,0 +1,33 @@
+.card {
+  max-width: 440px;
+  margin: 2rem auto;
+  padding: 2rem;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}
+
+.card h1 {
+  font-size: 1.75rem;
+}
+
+.lead {
+  color: var(--color-text-muted);
+  margin-top: 0;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 0.5rem;
+}
+
+.links {
+  display: flex;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.25rem;
+  font-size: 0.925rem;
+}
