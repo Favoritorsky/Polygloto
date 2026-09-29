@@ -1,6 +1,9 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { LIMITS } from '../../../shared/schema.js';
+import ContentRenderer from '../../components/content/ContentRenderer.jsx';
+import ContentEditor from '../../components/editor/ContentEditor.jsx';
 import AsyncState from '../../components/ui/AsyncState.jsx';
+import Button from '../../components/ui/Button.jsx';
 import SaveIndicator from '../../components/ui/SaveIndicator.jsx';
 import { useAutosave } from '../../hooks/useAutosave.js';
 import { useAsync } from '../../hooks/useSubscription.js';
@@ -28,9 +31,13 @@ export default function SectionEditor({ kind, sectionId }) {
 }
 
 function LoadedSectionEditor({ kind, section, readOnly }) {
-  const { courseId, ensureDraft } = useCourseEditor();
+  const { course, courseId, ensureDraft } = useCourseEditor();
   const [title, setTitle] = useState(section.title ?? '');
-  const [blocks] = useState(section.blocks ?? []);
+  const [blocks, setBlocks] = useState(section.blocks ?? []);
+  const [preview, setPreview] = useState(false);
+  const categories = course.categories ?? [];
+  // Последние значения обоих полей — чтобы каждое сохранение несло полный снимок.
+  const latest = useRef({ title: section.title ?? '', blocks: section.blocks ?? [] });
 
   const save = useCallback(
     async (value) => {
@@ -39,13 +46,23 @@ function LoadedSectionEditor({ kind, section, readOnly }) {
     },
     [courseId, kind, section.id, ensureDraft],
   );
-  const autosave = useAutosave(save);
+  const { schedule, status, error, flush } = useAutosave(save);
 
   function handleTitleChange(event) {
     const next = event.target.value.slice(0, LIMITS.LESSON_TITLE_MAX);
     setTitle(next);
-    autosave.schedule({ title: next, blocks });
+    latest.current = { ...latest.current, title: next };
+    schedule(latest.current);
   }
+
+  const handleBlocksChange = useCallback(
+    (nextBlocks) => {
+      setBlocks(nextBlocks);
+      latest.current = { ...latest.current, blocks: nextBlocks };
+      schedule(latest.current);
+    },
+    [schedule],
+  );
 
   return (
     <div className={styles.wrap}>
@@ -58,9 +75,18 @@ function LoadedSectionEditor({ kind, section, readOnly }) {
           aria-label="Название"
           readOnly={readOnly}
         />
-        <SaveIndicator status={autosave.status} error={autosave.error} onRetry={autosave.flush} />
+        <SaveIndicator status={status} error={error} onRetry={flush} />
+        <Button variant="secondary" size="sm" onClick={() => setPreview((p) => !p)}>
+          {preview ? 'Редактировать' : 'Предпросмотр'}
+        </Button>
       </div>
-      <div className={styles.placeholder}>Редактор контента подключается на этапе 5.</div>
+      {preview ? (
+        <div className={styles.preview}>
+          <ContentRenderer blocks={blocks} categories={categories} courseId={courseId} />
+        </div>
+      ) : (
+        <ContentEditor initialBlocks={blocks} onChange={handleBlocksChange} categories={categories} readOnly={readOnly} />
+      )}
     </div>
   );
 }

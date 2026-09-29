@@ -1,0 +1,138 @@
+/**
+ * Формат контента уроков и справочника (см. docs/data-model.md, «Формат контента»).
+ *
+ * sanitizeBlocks — единая строгая проверка структуры. Используется:
+ *  - на клиенте при сохранении из редактора (выбрасывает всё лишнее);
+ *  - в Cloud Function moderateCourse при публикации (сервер не доверяет
+ *    тому, что клиент записал в черновик, и публикует только очищенный контент).
+ * Контент никогда не содержит HTML: только текст и атрибуты оформления.
+ */
+import { LIMITS, PALETTE } from './schema.js';
+import { sanitizeTaskData, TASK_TYPE_IDS } from './tasks.js';
+
+export const BLOCK_TYPES = Object.freeze({
+  PARAGRAPH: 'paragraph',
+  HEADING: 'heading',
+  TABLE: 'table',
+  TASK: 'task',
+  // Зарезервировано для v2: аудио-вставки и подстрочный разбор (interlinear gloss).
+  AUDIO: 'audio',
+  GLOSS: 'gloss',
+});
+
+/** Блоки без текстового содержимого (в Slate — void-элементы). */
+export const VOID_BLOCK_TYPES = Object.freeze([BLOCK_TYPES.TABLE, BLOCK_TYPES.TASK, BLOCK_TYPES.AUDIO, BLOCK_TYPES.GLOSS]);
+
+export const CONTENT_LIMITS = Object.freeze({
+  LEAF_TEXT_MAX: 5000,
+  LEAVES_PER_BLOCK_MAX: 500,
+  TABLE_ROWS_MAX: 50,
+  TABLE_COLS_MAX: 10,
+  TABLE_CELL_MAX: 500,
+});
+
+export const MARKS = Object.freeze(['bold', 'italic', 'underline']);
+
+const ID_RE = /^[A-Za-z0-9_-]{1,40}$/;
+const COLOR_SET = new Set(PALETTE);
+
+function cleanString(value, max) {
+  return typeof value === 'string' ? value.slice(0, max) : '';
+}
+
+/** Очищает текстовый фрагмент: только известные атрибуты допустимых типов. */
+export function sanitizeLeaf(leaf, { categoryIds } = {}) {
+  if (!leaf || typeof leaf !== 'object') return null;
+  const clean = { text: cleanString(leaf.text, CONTENT_LIMITS.LEAF_TEXT_MAX) };
+  for (const mark of MARKS) if (leaf[mark] === true) clean[mark] = true;
+  if (COLOR_SET.has(leaf.color)) clean.color = leaf.color;
+  if (typeof leaf.category === 'string' && ID_RE.test(leaf.category) && (!categoryIds || categoryIds.has(leaf.category))) {
+    clean.category = leaf.category;
+  }
+  if (typeof leaf.dictRef === 'string' && ID_RE.test(leaf.dictRef)) clean.dictRef = leaf.dictRef;
+  return clean;
+}
+
+function sanitizeLeaves(children, options) {
+  const leaves = (Array.isArray(children) ? children : [])
+    .slice(0, CONTENT_LIMITS.LEAVES_PER_BLOCK_MAX)
+    .map((leaf) => sanitizeLeaf(leaf, options))
+    .filter(Boolean);
+  return leaves.length ? leaves : [{ text: '' }];
+}
+
+function sanitizeTable(block) {
+  const rows = (Array.isArray(block.rows) ? block.rows : []).slice(0, CONTENT_LIMITS.TABLE_ROWS_MAX);
+  const width = Math.min(
+    CONTENT_LIMITS.TABLE_COLS_MAX,
+    Math.max(1, ...rows.map((r) => (Array.isArray(r?.cells) ? r.cells.length : 0))),
+  );
+  const cleanRows = rows.map((row) => {
+    const cells = Array.isArray(row?.cells) ? row.cells : [];
+    return { cells: Array.from({ length: width }, (_, i) => cleanString(cells[i], CONTENT_LIMITS.TABLE_CELL_MAX)) };
+  });
+  return {
+    type: BLOCK_TYPES.TABLE,
+    headerRow: block.headerRow !== false,
+    rows: cleanRows.length ? cleanRows : [{ cells: [''] }],
+  };
+}
+
+/** Очищает один блок; неизвестные/зарезервированные типы отбрасываются (null). */
+export function sanitizeBlock(block, options = {}) {
+  if (!block || typeof block !== 'object') return null;
+  switch (block.type) {
+    case BLOCK_TYPES.PARAGRAPH:
+      return { type: BLOCK_TYPES.PARAGRAPH, children: sanitizeLeaves(block.children, options) };
+    case BLOCK_TYPES.HEADING:
+      return {
+        type: BLOCK_TYPES.HEADING,
+        level: block.level === 3 ? 3 : 2,
+        children: sanitizeLeaves(block.children, options),
+      };
+    case BLOCK_TYPES.TABLE:
+      return sanitizeTable(block);
+    case BLOCK_TYPES.TASK: {
+      if (!TASK_TYPE_IDS.includes(block.taskType)) return null;
+      const id = typeof block.id === 'string' && ID_RE.test(block.id) ? block.id : null;
+      return { type: BLOCK_TYPES.TASK, id, taskType: block.taskType, data: sanitizeTaskData(block.taskType, block.data) };
+    }
+    default:
+      return null;
+  }
+}
+
+/**
+ * Очищает массив блоков. categoryIds — Set допустимых id категорий курса
+ * (ссылки на удалённые категории отбрасываются).
+ */
+export function sanitizeBlocks(blocks, options = {}) {
+  if (!Array.isArray(blocks)) return [];
+  return blocks
+    .slice(0, LIMITS.LESSON_BLOCKS_MAX)
+    .map((b) => sanitizeBlock(b, options))
+    .filter(Boolean);
+}
+
+/** Очищает список категорий курса. */
+export function sanitizeCategories(categories) {
+  if (!Array.isArray(categories)) return [];
+  const seen = new Set();
+  const result = [];
+  for (const c of categories.slice(0, LIMITS.COURSE_CATEGORIES_MAX)) {
+    if (!c || typeof c !== 'object' || typeof c.id !== 'string' || !ID_RE.test(c.id) || seen.has(c.id)) continue;
+    const name = cleanString(c.name, LIMITS.CATEGORY_NAME_MAX).trim();
+    if (!name) continue;
+    seen.add(c.id);
+    result.push({ id: c.id, name, color: COLOR_SET.has(c.color) ? c.color : PALETTE[0] });
+  }
+  return result;
+}
+
+/** Собирает простой текст блоков (для поиска, превью и сопоставления со словарём). */
+export function blocksToPlainText(blocks) {
+  return (blocks ?? [])
+    .filter((b) => Array.isArray(b.children))
+    .map((b) => b.children.map((l) => l.text ?? '').join(''))
+    .join('\n');
+}

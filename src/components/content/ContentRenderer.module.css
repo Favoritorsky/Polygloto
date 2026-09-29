@@ -1,0 +1,7 @@
+.content {
+  font-size: 1.05rem;
+}
+
+.empty {
+  color: var(--color-text-muted);
+}

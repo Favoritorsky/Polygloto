@@ -1,0 +1,22 @@
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 1rem;
+  background: var(--color-surface-muted);
+  border-radius: var(--radius-sm);
+  font-size: 0.875rem;
+}
+
+.item {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.swatch {
+  width: 1.1rem;
+  height: 0.3rem;
+  border-radius: 2px;
+}

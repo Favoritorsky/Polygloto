@@ -1,0 +1,37 @@
+.wrap {
+  position: relative;
+}
+
+.trigger {
+  border: 1px solid transparent;
+  background: none;
+  border-radius: var(--radius-sm);
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.trigger:hover:not(:disabled),
+.active {
+  background: var(--color-surface-muted);
+  border-color: var(--color-border);
+}
+
+.trigger:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.panel {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 30;
+  min-width: 12rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  padding: 0.5rem;
+}
