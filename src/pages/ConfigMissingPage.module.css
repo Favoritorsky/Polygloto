@@ -1,0 +1,8 @@
+.page {
+  max-width: 640px;
+  margin: 4rem auto;
+  padding: 2rem;
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+}

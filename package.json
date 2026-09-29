@@ -1,0 +1,40 @@
+{
+  "name": "polygloto",
+  "version": "0.1.0",
+  "description": "Polygloto — платформа интерактивных самоучителей языков",
+  "scripts": {
+    "dev": "vite",
+    "dev:emu": "vite --mode emulators",
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint .",
+    "test": "vitest run --project unit",
+    "test:rules": "firebase emulators:exec --only firestore,storage --project demo-polygloto \"vitest run --project rules\"",
+    "test:functions": "node scripts/sync-shared.mjs && firebase emulators:exec --only auth,firestore,functions --project demo-polygloto \"vitest run --project functions\"",
+    "emulators": "node scripts/sync-shared.mjs && firebase emulators:start --project demo-polygloto",
+    "sync-shared": "node scripts/sync-shared.mjs"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "firebase": "^12.19.0",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "react-router-dom": "^7.18.4",
+    "slate": "^0.126.2",
+    "slate-history": "^0.113.1",
+    "slate-react": "^0.127.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@firebase/rules-unit-testing": "^5.0.2",
+    "@vitejs/plugin-react": "^6.1.1",
+    "eslint": "^10.11.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "eslint-plugin-react-refresh": "^0.5.7",
+    "globals": "^17.12.0",
+    "vite": "^8.3.1",
+    "vitest": "^5.0.2"
+  },
+  "private": true,
+  "type": "module"
+}
