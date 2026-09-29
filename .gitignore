@@ -12,3 +12,7 @@ ui-debug.log
 emulator-data/
 coverage/
 test-results/
+
+# Ключ сервисного аккаунта Firebase — только в секретах GitHub
+service-account*.json
+*-firebase-adminsdk-*.json

@@ -42,7 +42,22 @@ npm run dev:emu        # в другом терминале; фронтенд н
 Письма подтверждения и сброса пароля в эмуляторе не отправляются: ссылки
 печатаются в логе эмулятора Auth.
 
-## Подключение боевого проекта Firebase (тариф Spark)
+## Автоматический деплой (GitHub Actions)
+
+Каждый пуш в `main` проверяется (lint, юнит-тесты, тесты правил, сборка) и
+выкладывается на https://selfi-a04df.web.app: правила Firestore, индексы и
+сайт. Веб-конфиг берётся из проекта Firebase во время деплоя, в репозитории
+его нет. Workflow: `.github/workflows/deploy.yml`.
+
+Нужны два секрета репозитория (Settings → Secrets and variables → Actions):
+
+- `FIREBASE_SERVICE_ACCOUNT` — содержимое JSON-ключа из Firebase Console →
+  Project settings → Service accounts → Generate new private key.
+  Файл ключа никуда больше не кладите и не коммитьте.
+- `ADMIN_EMAIL` — email, с которым администратор регистрируется на сайте.
+  Раз в час workflow проверяет, зарегистрировался ли он, и выдаёт роль admin.
+
+## Ручной деплой (если без GitHub Actions)
 
 1. `cp .env.example .env.local` и заполните `VITE_FIREBASE_*` из консоли Firebase
    (Project settings → Your apps → Web app). Файл `.env.local` не коммитится.
