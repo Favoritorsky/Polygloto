@@ -1,8 +1,86 @@
 rules_version = '2';
-// Этап 1: всё закрыто. Правила наполняются на этапах 3–13.
+
+// Security Rules Polygloto. Схема данных: docs/data-model.md.
+// Лимиты длины продублированы из shared/schema.js (LIMITS) — меняйте синхронно.
+// Принципы:
+//  * по умолчанию всё запрещено (нет правила — нет доступа);
+//  * роль и бан читаются только из users/{uid}, которые клиент менять не может;
+//  * подтверждение почты — только request.auth.token.email_verified;
+//  * клиент не пишет служебные поля (role, banned, счётчики, статусы модерации).
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /{document=**} {
+
+    // ---------- Общие функции ----------
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isSelf(uid) {
+      return signedIn() && request.auth.uid == uid;
+    }
+
+    function userDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function userExists() {
+      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+    }
+
+    function isAdmin() {
+      return signedIn() && userExists() && userDoc().data.role == 'admin';
+    }
+
+    // Вошёл, профиль создан и не забанен — может создавать контент.
+    function isActiveUser() {
+      return signedIn() && userExists() && userDoc().data.get('banned', false) != true;
+    }
+
+    function emailVerified() {
+      return signedIn() && request.auth.token.email_verified == true;
+    }
+
+    // Изменились только перечисленные поля.
+    function onlyChanges(allowed) {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(allowed);
+    }
+
+    function isStringOfLength(value, min, max) {
+      return value is string && value.size() >= min && value.size() <= max;
+    }
+
+    // ---------- users/{uid} ----------
+    // Создаёт Cloud Function onUserCreated; role/banned/commentsCount/createdAt — только сервер.
+
+    function validPhotoURL(url) {
+      return url == null || (
+        url is string && url.size() <= 1024 &&
+        url.matches('^(https://firebasestorage[.]googleapis[.]com/|http://(127[.]0[.]0[.]1|localhost):9199/).*')
+      );
+    }
+
+    match /users/{uid} {
+      // Публичный профиль: email здесь не хранится.
+      allow get: if true;
+      // Перебор всех пользователей — только для админ-панели.
+      allow list: if isAdmin();
+
+      allow create: if false;
+      allow delete: if false;
+
+      allow update: if isSelf(uid)
+        && isActiveUser()
+        && onlyChanges(['displayName', 'bio', 'photoURL'])
+        && isStringOfLength(request.resource.data.displayName, 2, 40)
+        && request.resource.data.displayName == request.resource.data.displayName.trim()
+        && isStringOfLength(request.resource.data.bio, 0, 500)
+        && validPhotoURL(request.resource.data.photoURL);
+    }
+
+    // ---------- rateLimits/{uid} ----------
+    // Служебная коллекция Cloud Functions — клиенту закрыта.
+    match /rateLimits/{uid} {
       allow read, write: if false;
     }
   }
