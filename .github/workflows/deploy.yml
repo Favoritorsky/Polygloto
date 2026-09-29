@@ -76,6 +76,8 @@ jobs:
             const cache = { [p]: Object.fromEntries(apis.map((a) => [a, true])) };
             require("fs").writeFileSync(process.env.HOME + "/.config/configstore/firebase-tools.json", JSON.stringify({ apiEnablementCache: cache }));
           '
+      - name: Диагностика доступа
+        run: node scripts/probe-permissions.mjs
       - name: Деплой правил и индексов Firestore
         run: firebase deploy --only firestore:rules,firestore:indexes --project "$FIREBASE_PROJECT_ID" --non-interactive --force
       - name: Деплой сайта
