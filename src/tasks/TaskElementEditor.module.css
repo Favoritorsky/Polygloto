@@ -1,0 +1,6 @@
+.problems {
+  margin: 0.25rem 0 0;
+  padding-left: 1.2rem;
+  color: var(--color-warning);
+  font-size: 0.85rem;
+}

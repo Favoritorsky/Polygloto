@@ -1,0 +1,73 @@
+.question {
+  font-weight: 600;
+  margin: 0 0 0.6rem;
+}
+
+.options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.option {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  cursor: pointer;
+}
+
+.option input {
+  width: auto;
+}
+
+.optionCorrect {
+  border-color: var(--color-success);
+  background: var(--color-success-bg);
+}
+
+.optionWrong {
+  border-color: var(--color-danger);
+  background: var(--color-danger-bg);
+}
+
+.sentence {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-size: 1.05rem;
+}
+
+.blank {
+  width: 10rem;
+  display: inline-block;
+}
+
+.pairs {
+  display: grid;
+  grid-template-columns: minmax(8rem, 1fr) minmax(10rem, 1.3fr) auto;
+  gap: 0.4rem 0.75rem;
+  align-items: center;
+}
+
+.mark {
+  font-weight: 700;
+}
+
+.markOk {
+  color: var(--color-success);
+}
+
+.markBad {
+  color: var(--color-danger);
+}
+
+.source {
+  font-style: italic;
+  font-size: 1.05rem;
+  margin: 0 0 0.5rem;
+}

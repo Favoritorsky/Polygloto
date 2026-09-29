@@ -3,7 +3,7 @@
  * Формат почти совпадает: у Slate у void-блоков есть служебные children,
  * которые при сохранении отбрасываются через sanitizeBlocks.
  */
-import { Editor, Element, Node, Path, Transforms } from 'slate';
+import { Editor, Element, Node, Transforms } from 'slate';
 import { BLOCK_TYPES, VOID_BLOCK_TYPES, sanitizeBlocks } from '../../../shared/content.js';
 
 const EMPTY_PARAGRAPH = () => ({ type: BLOCK_TYPES.PARAGRAPH, children: [{ text: '' }] });
@@ -94,19 +94,31 @@ export function setTextBlockType(editor, kind) {
   if (kind === 'paragraph') Transforms.unsetNodes(editor, 'level', { match: (n) => Element.isElement(n) && n.type === BLOCK_TYPES.PARAGRAPH });
 }
 
-/** Вставляет void-блок после текущего блока (или в конец) и абзац за ним. */
+/**
+ * Вставляет void-блок после текущего блока (пустой абзац под курсором
+ * заменяется блоком) и ставит курсор в пустой абзац сразу за ним — так
+ * несколько вставок подряд идут сверху вниз в порядке вставки.
+ */
 export function insertVoidBlock(editor, block) {
   const node = { ...block, children: [{ text: '' }] };
   const { selection } = editor;
-  let at = [editor.children.length];
+  let index = editor.children.length;
   if (selection) {
     const top = selection.anchor.path[0];
     const current = editor.children[top];
     const isEmptyParagraph = current && current.type === BLOCK_TYPES.PARAGRAPH && Node.string(current) === '';
-    at = isEmptyParagraph ? [top] : Path.next([top]);
-    if (isEmptyParagraph) Transforms.removeNodes(editor, { at: [top] });
+    if (isEmptyParagraph) {
+      Transforms.removeNodes(editor, { at: [top] });
+      index = top;
+    } else {
+      index = top + 1;
+    }
   }
-  Transforms.insertNodes(editor, node, { at });
+  Transforms.insertNodes(editor, node, { at: [index] });
+  const next = editor.children[index + 1];
+  const nextIsEmptyParagraph = next && next.type === BLOCK_TYPES.PARAGRAPH && Node.string(next) === '';
+  if (!nextIsEmptyParagraph) Transforms.insertNodes(editor, EMPTY_PARAGRAPH(), { at: [index + 1] });
+  Transforms.select(editor, Editor.start(editor, [index + 1]));
 }
 
 export function newBlockId() {
