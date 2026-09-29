@@ -1,12 +1,17 @@
 rules_version = '2';
 
 // Security Rules Polygloto. Схема данных: docs/data-model.md.
-// Лимиты длины продублированы из shared/schema.js (LIMITS) — меняйте синхронно.
+// Проект работает на бесплатном тарифе Spark, без Cloud Functions: всё, что
+// нельзя доверить клиенту, проверяют эти правила. Сложные операции клиент
+// выполняет одной пакетной записью (batch/transaction), а правила сверяют
+// связанные документы до и после неё (get / getAfter / existsAfter).
+//
+// Лимиты длины продублированы из shared/schema.js (LIMITS, RATE_LIMITS) — меняйте синхронно.
 // Принципы:
 //  * по умолчанию всё запрещено (нет правила — нет доступа);
-//  * роль и бан читаются только из users/{uid}, которые клиент менять не может;
+//  * роль и бан читаются только из users/{uid}; повысить роль до admin нельзя никак, кроме консоли;
 //  * подтверждение почты — только request.auth.token.email_verified;
-//  * клиент не пишет служебные поля (role, banned, счётчики, статусы модерации).
+//  * счётчики лайков меняются только вместе с голосом и ровно на его разницу.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -20,12 +25,16 @@ service cloud.firestore {
       return signedIn() && request.auth.uid == uid;
     }
 
+    function userPath(uid) {
+      return /databases/$(database)/documents/users/$(uid);
+    }
+
     function userDoc() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid));
+      return get(userPath(request.auth.uid));
     }
 
     function userExists() {
-      return exists(/databases/$(database)/documents/users/$(request.auth.uid));
+      return exists(userPath(request.auth.uid));
     }
 
     function isAdmin() {
@@ -51,16 +60,23 @@ service cloud.firestore {
     }
 
     // ---------- users/{uid} ----------
-    // Создаёт Cloud Function onUserCreated; role/banned/commentsCount/createdAt — только сервер.
+    // Профиль создаёт сам пользователь сразу после регистрации — строго
+    // с ролью reader (или user, если почта уже подтверждена) и без бана.
 
-    // Аватар — только файл из собственной папки avatars/{uid}/ в Firebase Storage
-    // (или в эмуляторе Storage): нельзя подставить чужую картинку или внешний трекер.
-    function validPhotoURL(url, uid) {
-      return url == null || (
-        url is string && url.size() <= 1024 &&
-        url.matches('^(https://firebasestorage[.]googleapis[.]com|http://(127[.]0[.]0[.]1|localhost):9199)/v0/b/[^/?#]+/o/avatars%2F'
-          + uid + '%2F[A-Za-z0-9_.-]+([?][^#]*)?$')
+    // Аватар хранится прямо в профиле: маленький JPEG (data URL), который
+    // клиент ужимает до 160×160. Внешние ссылки запрещены — ни трекеров, ни подмены.
+    function validPhoto(photo) {
+      return photo == null || (
+        photo is string && photo.size() <= 40000 &&
+        photo.matches('^data:image/jpeg;base64,[A-Za-z0-9+/]+={0,2}$')
       );
+    }
+
+    function validProfileFields(d) {
+      return isStringOfLength(d.displayName, 2, 40)
+        && d.displayName == d.displayName.trim()
+        && isStringOfLength(d.bio, 0, 500)
+        && validPhoto(d.photoURL);
     }
 
     match /users/{uid} {
@@ -69,25 +85,79 @@ service cloud.firestore {
       // Перебор всех пользователей — только для админ-панели.
       allow list: if isAdmin();
 
-      allow create: if false;
-      allow delete: if false;
+      allow create: if isSelf(uid)
+        && request.resource.data.keys().hasOnly(['displayName', 'bio', 'photoURL', 'role', 'banned', 'createdAt'])
+        && request.resource.data.keys().hasAll(['displayName', 'bio', 'photoURL', 'role', 'banned', 'createdAt'])
+        && validProfileFields(request.resource.data)
+        && (request.resource.data.role == 'reader' || (request.resource.data.role == 'user' && emailVerified()))
+        && request.resource.data.banned == false
+        && request.resource.data.createdAt == request.time;
 
-      allow update: if isSelf(uid)
-        && isActiveUser()
-        && onlyChanges(['displayName', 'bio', 'photoURL'])
-        && isStringOfLength(request.resource.data.displayName, 2, 40)
-        && request.resource.data.displayName == request.resource.data.displayName.trim()
-        && isStringOfLength(request.resource.data.bio, 0, 500)
-        && validPhotoURL(request.resource.data.photoURL, uid);
+      allow update: if
+        // Владелец правит свой профиль.
+        (isSelf(uid) && isActiveUser()
+          && onlyChanges(['displayName', 'bio', 'photoURL'])
+          && validProfileFields(request.resource.data))
+        // Повышение reader → user после подтверждения почты (единственная смена роли клиентом).
+        || (isSelf(uid) && onlyChanges(['role'])
+          && resource.data.role == 'reader' && request.resource.data.role == 'user'
+          && emailVerified())
+        // Админ блокирует и разблокирует: не себя и не другого админа.
+        || (isAdmin() && !isSelf(uid) && resource.data.role != 'admin'
+          && onlyChanges(['banned']) && request.resource.data.banned is bool);
+
+      allow delete: if false;
+    }
+
+    // ---------- rateLimits/{uid} ----------
+    // Отметки времени последних действий. Обновляются в одной пакетной записи
+    // с самим действием; правила курса и комментария требуют, чтобы отметка
+    // стала равна request.time, а правило ниже — чтобы с прошлой прошло N секунд.
+
+    function limitField(key, seconds) {
+      let before = resource == null ? null : resource.data.get(key, null);
+      let after = request.resource.data.get(key, null);
+      return after == before
+        || (after == request.time && (before == null || request.time > before + duration.value(seconds, 's')));
+    }
+
+    match /rateLimits/{uid} {
+      allow read: if isSelf(uid);
+      allow create, update: if isSelf(uid)
+        && request.resource.data.keys().hasOnly(['createCourse', 'addComment'])
+        && limitField('createCourse', 30)
+        && limitField('addComment', 15);
+      allow delete: if false;
+    }
+
+    function rateLimitAfter(action) {
+      return getAfter(/databases/$(database)/documents/rateLimits/$(request.auth.uid)).data.get(action, null) == request.time;
+    }
+
+    // ---------- Голоса (ratings) ----------
+
+    function ratingPath(courseId, uid) {
+      return /databases/$(database)/documents/courses/$(courseId)/ratings/$(uid);
+    }
+
+    function ratingValue(path) {
+      return exists(path) ? get(path).data.value : null;
+    }
+
+    function ratingValueAfter(path) {
+      return existsAfter(path) ? getAfter(path).data.value : null;
     }
 
     // ---------- courses/{courseId} — рабочая версия ----------
-    // Создаёт только Cloud Function createCourse (rate limit, серверные поля).
     // Черновики и вообще рабочую версию видит только автор и админ;
     // читатели видят опубликованный снимок в publicCourses.
 
-    function courseData(courseId) {
-      return get(/databases/$(database)/documents/courses/$(courseId)).data;
+    function coursePath(courseId) {
+      return /databases/$(database)/documents/courses/$(courseId);
+    }
+
+    function publicPath(courseId) {
+      return /databases/$(database)/documents/publicCourses/$(courseId);
     }
 
     function canManageCourse(data) {
@@ -103,6 +173,27 @@ service cloud.firestore {
         && d.referenceOrder is list && d.referenceOrder.size() <= 200;
     }
 
+    // Создание: новый черновик с первым уроком, не чаще раза в 30 с (rateLimits).
+    function isValidCourseCreate() {
+      let d = request.resource.data;
+      return isActiveUser()
+        && d.keys().hasOnly(['authorId', 'title', 'language', 'description', 'categories', 'lessonOrder',
+                             'referenceOrder', 'status', 'rejectionReason', 'hasPublishedVersion',
+                             'submittedAt', 'createdAt', 'updatedAt'])
+        && d.authorId == request.auth.uid
+        && validCourseMeta(d)
+        && d.categories.size() == 0
+        && d.lessonOrder.size() <= 1
+        && d.referenceOrder.size() == 0
+        && d.status == 'draft'
+        && d.rejectionReason == null
+        && d.hasPublishedVersion == false
+        && d.submittedAt == null
+        && d.createdAt == request.time
+        && d.updatedAt == request.time
+        && rateLimitAfter('createCourse');
+    }
+
     // Правка контента: только в статусе draft (в pending_review контент заморожен,
     // чтобы админ одобрял ровно ту версию, которую видел).
     function isContentEdit() {
@@ -114,9 +205,8 @@ service cloud.firestore {
         && validCourseMeta(request.resource.data);
     }
 
-    // Разрешённые клиенту переходы статуса (см. AUTHOR_STATUS_TRANSITIONS в shared/schema.js).
-    // published / rejected ставит только Cloud Function moderateCourse.
-    function isStatusChange() {
+    // Переходы статуса автором (см. AUTHOR_STATUS_TRANSITIONS в shared/schema.js).
+    function isAuthorStatusChange() {
       let from = resource.data.status;
       let to = request.resource.data.status;
       return request.resource.data.updatedAt == request.time
@@ -131,18 +221,43 @@ service cloud.firestore {
         );
     }
 
+    // Решение модератора: только админ и только для курса на проверке.
+    // Одобрение допускается, только если в той же записи есть опубликованный снимок.
+    function isModeration(courseId) {
+      let d = request.resource.data;
+      return isAdmin()
+        && resource.data.status == 'pending_review'
+        && d.updatedAt == request.time
+        && (
+          (d.status == 'rejected'
+            && onlyChanges(['status', 'updatedAt', 'rejectionReason'])
+            && isStringOfLength(d.rejectionReason, 5, 2000))
+          || (d.status == 'published'
+            && onlyChanges(['status', 'updatedAt', 'rejectionReason', 'hasPublishedVersion'])
+            && d.rejectionReason == null
+            && d.hasPublishedVersion == true
+            && existsAfter(publicPath(courseId))
+            && getAfter(publicPath(courseId)).data.approvedAt == request.time)
+        );
+    }
+
     match /courses/{courseId} {
       allow get: if canManageCourse(resource.data);
       // Запрос обязан фильтровать по authorId == своему uid (или быть от админа).
       allow list: if signedIn() && (resource.data.authorId == request.auth.uid || isAdmin());
 
-      allow create: if false;
-      allow update: if canManageCourse(resource.data)
-        && isActiveUser()
-        && (isContentEdit() || isStatusChange());
+      allow create: if isValidCourseCreate();
+      allow update: if (canManageCourse(resource.data) && isActiveUser()
+          && (isContentEdit() || isAuthorStatusChange()))
+        || isModeration(courseId);
+      // Подколлекции клиент удаляет до самого курса (см. courseService.deleteCourse).
       allow delete: if canManageCourse(resource.data) && isActiveUser();
 
-      // Контент рабочей версии: уроки и справочник.
+      // Курс после текущей записи (в пакетной записи создания курса он ещё не существует до неё).
+      function courseAfter() {
+        return getAfter(coursePath(courseId)).data;
+      }
+
       function validSection(d) {
         return d.keys().hasOnly(['title', 'blocks', 'updatedAt'])
           && isStringOfLength(d.title, 0, 120)
@@ -151,20 +266,26 @@ service cloud.firestore {
       }
 
       function canWriteContent() {
-        let course = courseData(courseId);
-        return canManageCourse(course) && isActiveUser() && course.status == 'draft';
+        return existsAfter(coursePath(courseId))
+          && canManageCourse(courseAfter()) && isActiveUser() && courseAfter().status == 'draft';
+      }
+
+      // Удаление контента: в черновике — при правке, в любом статусе — при удалении курса.
+      function canDeleteContent() {
+        return canWriteContent()
+          || (exists(coursePath(courseId)) && canManageCourse(get(coursePath(courseId)).data) && isActiveUser());
       }
 
       match /lessons/{lessonId} {
-        allow read: if canManageCourse(courseData(courseId));
+        allow read: if canManageCourse(get(coursePath(courseId)).data);
         allow create, update: if canWriteContent() && validSection(request.resource.data);
-        allow delete: if canWriteContent();
+        allow delete: if canDeleteContent();
       }
 
       match /reference/{sectionId} {
-        allow read: if canManageCourse(courseData(courseId));
+        allow read: if canManageCourse(get(coursePath(courseId)).data);
         allow create, update: if canWriteContent() && validSection(request.resource.data);
-        allow delete: if canWriteContent();
+        allow delete: if canDeleteContent();
       }
 
       // Словарь курса. partOfSpeech — из PART_OF_SPEECH_IDS (shared/schema.js).
@@ -181,25 +302,50 @@ service cloud.firestore {
           && d.updatedAt == request.time;
       }
 
-      // ---------- Публичная активность: комментарии, реакции, оценки ----------
-      // Доступны только для опубликованного курса (есть publicCourses/{id}).
-
-      function publicCourse() {
-        return get(/databases/$(database)/documents/publicCourses/$(courseId));
+      match /dictionary/{wordId} {
+        allow read: if canManageCourse(get(coursePath(courseId)).data);
+        allow create: if canWriteContent() && validWord(request.resource.data)
+          && request.resource.data.createdAt == request.time;
+        allow update: if canWriteContent() && validWord(request.resource.data)
+          && request.resource.data.createdAt == resource.data.createdAt;
+        allow delete: if canDeleteContent();
       }
+
+      // ---------- Публичная активность: комментарии, реакции, оценки ----------
+      // Создаются только для опубликованного курса (есть publicCourses/{id}).
 
       function isPublished() {
-        return exists(/databases/$(database)/documents/publicCourses/$(courseId));
+        return exists(publicPath(courseId));
       }
 
-      // Комментарии создаёт только callable addComment (rate limit).
+      function publicCourse() {
+        return get(publicPath(courseId)).data;
+      }
+
+      // Автор курса (или админ) может убрать любую активность — например, при удалении курса.
+      function isCourseOwner() {
+        return signedIn() && (isAdmin()
+          || (exists(coursePath(courseId)) && get(coursePath(courseId)).data.authorId == request.auth.uid));
+      }
+
+      // Комментарий создаётся одной записью с отметкой rateLimits.addComment (не чаще раза в 15 с).
+      // Имя автора копируется из профиля — подделать нельзя.
       match /comments/{commentId} {
         allow read: if isPublished();
-        allow create, update: if false;
+        allow create: if isActiveUser()
+          && isPublished()
+          && request.resource.data.keys().hasOnly(['authorId', 'authorName', 'text', 'createdAt'])
+          && request.resource.data.authorId == request.auth.uid
+          && request.resource.data.authorName == userDoc().data.displayName
+          && isStringOfLength(request.resource.data.text, 1, 2000)
+          && request.resource.data.text == request.resource.data.text.trim()
+          && request.resource.data.createdAt == request.time
+          && rateLimitAfter('addComment');
+        allow update: if false;
         allow delete: if signedIn() && (
           resource.data.authorId == request.auth.uid
-          || (isPublished() && publicCourse().data.authorId == request.auth.uid)
-          || isAdmin()
+          || (isPublished() && publicCourse().authorId == request.auth.uid)
+          || isCourseOwner()
         );
       }
 
@@ -223,56 +369,91 @@ service cloud.firestore {
       match /reactions/{reactionId} {
         allow read: if isPublished();
         allow create, update: if isActiveUser() && isPublished() && validReaction(reactionId);
-        allow delete: if signedIn() && (resource.data.uid == request.auth.uid || isAdmin());
+        // Свою — всегда; реакцию на удалённый комментарий — любой вошедший (уборка);
+        // любую — автор курса и админ.
+        allow delete: if signedIn() && (
+          resource.data.uid == request.auth.uid
+          || (resource.data.targetType == 'comment'
+            && !exists(/databases/$(database)/documents/courses/$(courseId)/comments/$(resource.data.targetId)))
+          || isCourseOwner()
+        );
       }
 
       // Оценка курса: один документ на пользователя, можно менять и снимать.
-      // Счётчики пересчитывает Cloud Function onRatingWritten.
+      // Счётчики likesCount/dislikesCount/score в publicCourses меняются в той же
+      // пакетной записи ровно на разницу голоса — правило ниже и правило
+      // publicCourses проверяют друг друга, поэтому одно без другого не пройдёт.
       match /ratings/{uid} {
+        function countersMatch() {
+          let path = ratingPath(courseId, uid);
+          let before = ratingValue(path);
+          let after = ratingValueAfter(path);
+          let old = get(publicPath(courseId)).data;
+          let next = getAfter(publicPath(courseId)).data;
+          let dl = (after == 'like' ? 1 : 0) - (before == 'like' ? 1 : 0);
+          let dd = (after == 'dislike' ? 1 : 0) - (before == 'dislike' ? 1 : 0);
+          return next.likesCount == old.likesCount + dl
+            && next.dislikesCount == old.dislikesCount + dd
+            && next.score == next.likesCount - next.dislikesCount;
+        }
+
         allow read: if isSelf(uid);
         allow create, update: if isSelf(uid)
           && isActiveUser()
           && isPublished()
-          && publicCourse().data.authorId != request.auth.uid
+          && publicCourse().authorId != request.auth.uid
           && request.resource.data.keys().hasOnly(['value', 'updatedAt'])
           && request.resource.data.value in ['like', 'dislike']
-          && request.resource.data.updatedAt == request.time;
-        allow delete: if isSelf(uid);
-      }
-
-      match /dictionary/{wordId} {
-        allow read: if canManageCourse(courseData(courseId));
-        allow create: if canWriteContent() && validWord(request.resource.data)
-          && request.resource.data.createdAt == request.time;
-        allow update: if canWriteContent() && validWord(request.resource.data)
-          && request.resource.data.createdAt == resource.data.createdAt;
-        allow delete: if canWriteContent();
+          && request.resource.data.updatedAt == request.time
+          && countersMatch();
+        // Снять голос — вместе со счётчиками; если курса уже нет (удаление) — без них.
+        allow delete: if (isSelf(uid) && (!existsAfter(publicPath(courseId)) || countersMatch()))
+          || (isCourseOwner() && !existsAfter(publicPath(courseId)));
       }
     }
 
     // ---------- publicCourses/{courseId} — опубликованный снимок ----------
-    // Пишет только Cloud Function moderateCourse (и счётчики — onRatingWritten).
+    // Снимок пишет админ при одобрении (клиент админки очищает контент теми же
+    // функциями shared/, что раньше выполнялись на сервере). Остальным разрешены
+    // только строго ограниченные изменения, перечисленные ниже.
     match /publicCourses/{courseId} {
       allow read: if true;
-      allow write: if false;
+
+      allow create, update: if isAdmin()
+        // Голос читателя: меняются только счётчики, и ровно на разницу его голоса
+        // (проверяет правило ratings/{uid}, изменённое в той же записи).
+        || (request.method == 'update' && isActiveUser()
+          && onlyChanges(['likesCount', 'dislikesCount', 'score'])
+          && ratingValueAfter(ratingPath(courseId, request.auth.uid)) != ratingValue(ratingPath(courseId, request.auth.uid))
+          && request.resource.data.score == request.resource.data.likesCount - request.resource.data.dislikesCount)
+        // Автор сменил имя в профиле — имя в его опубликованных курсах обновляется той же записью.
+        || (request.method == 'update' && resource.data.authorId == request.auth.uid
+          && onlyChanges(['authorName'])
+          && request.resource.data.authorName == getAfter(userPath(request.auth.uid)).data.displayName);
+
+      // Снять с публикации может автор (при удалении курса) и админ.
+      allow delete: if signedIn() && (resource.data.authorId == request.auth.uid || isAdmin());
 
       match /{section}/{docId} {
         allow read: if section in ['lessons', 'reference', 'dictionary'];
-        allow write: if false;
+        allow create, update: if isAdmin() && section in ['lessons', 'reference', 'dictionary'];
+        allow delete: if signedIn() && (isAdmin()
+          || (exists(publicPath(courseId)) && get(publicPath(courseId)).data.authorId == request.auth.uid)
+          || (exists(coursePath(courseId)) && get(coursePath(courseId)).data.authorId == request.auth.uid));
       }
     }
 
     // ---------- catalogMeta/{docId} ----------
-    // Служебные данные каталога (список языков). Пишет только Cloud Function.
+    // Служебные данные каталога (список языков). Обновляет админ при модерации.
     match /catalogMeta/{docId} {
       allow read: if true;
-      allow write: if false;
+      allow write: if isAdmin();
     }
 
-    // ---------- rateLimits/{uid} ----------
-    // Служебная коллекция Cloud Functions — клиенту закрыта.
-    match /rateLimits/{uid} {
-      allow read, write: if false;
+    // Счётчик комментариев пользователя считается запросом count() по группе
+    // коллекций comments (бейдж «Собеседник»).
+    match /{path=**}/comments/{commentId} {
+      allow list: if true;
     }
   }
 }

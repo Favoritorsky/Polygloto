@@ -5,9 +5,10 @@ import Avatar from '../../components/profile/Avatar.jsx';
 import AsyncState from '../../components/ui/AsyncState.jsx';
 import Button from '../../components/ui/Button.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
-import { useSubscription } from '../../hooks/useSubscription.js';
+import { useAsync, useSubscription } from '../../hooks/useSubscription.js';
 import { plural } from '../../model/plural.js';
 import { computeBadges, computeProfileStats } from '../../profile/profileStats.js';
+import { countUserComments } from '../../services/commentService.js';
 import { subscribeToAuthorCourses } from '../../services/profileService.js';
 import { subscribeToUser } from '../../services/userService.js';
 import ProfileEditForm from './ProfileEditForm.jsx';
@@ -29,7 +30,8 @@ export default function ProfilePage() {
   const profile = useSubscription((onData, onError) => subscribeToUser(uid, onData, onError), uid);
   const courses = useSubscription((onData, onError) => subscribeToAuthorCourses(uid, onData, onError), profile.data ? uid : null);
 
-  const stats = computeProfileStats(courses.data ?? [], profile.data);
+  const comments = useAsync(() => countUserComments(uid), profile.data ? uid : null);
+  const stats = computeProfileStats(courses.data ?? [], comments.data ?? 0);
   const badges = computeBadges(stats);
   const since = memberSince(profile.data?.createdAt);
 
@@ -89,7 +91,7 @@ export default function ProfilePage() {
                 <span>{stats.approval === null ? 'пока без оценок' : 'положительных оценок'}</span>
               </div>
               <div>
-                <strong>{stats.commentsCount}</strong>
+                <strong>{comments.loading ? '…' : stats.commentsCount}</strong>
                 <span>{plural(stats.commentsCount, ['комментарий', 'комментария', 'комментариев'])}</span>
               </div>
             </section>

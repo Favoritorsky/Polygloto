@@ -22,7 +22,7 @@ export default [
     },
   },
   {
-    files: ['functions/**/*.js', 'scripts/**/*.mjs', 'tests/**/*.js', '*.config.js'],
+    files: ['tests/**/*.js', '*.config.js'],
     languageOptions: { ecmaVersion: 'latest', sourceType: 'module', globals: globals.node },
     rules: { ...js.configs.recommended.rules },
   },

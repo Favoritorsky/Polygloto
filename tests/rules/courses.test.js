@@ -13,6 +13,7 @@ import {
   writeBatch,
   arrayUnion,
 } from 'firebase/firestore';
+import { Timestamp } from 'firebase/firestore';
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
 import { anon, as, course, createEnv, seed, userProfile } from './helpers.js';
 
@@ -62,8 +63,40 @@ describe('courses: чтение', () => {
 });
 
 describe('courses: создание и удаление', () => {
-  it('клиент не может создать курс напрямую (только через createCourse)', async () => {
-    await assertFails(setDoc(doc(as(env, 'alice'), 'courses/new'), course()));
+  // Так курс создаёт courseService.createCourse: курс, первый урок и отметка лимита одной записью.
+  function create(db, uid, { id = 'new', overrides = {}, withLesson = true, withStamp = true } = {}) {
+    const batch = writeBatch(db);
+    batch.set(doc(db, `courses/${id}`), {
+      ...course({ authorId: uid, lessonOrder: withLesson ? ['l1'] : [], categories: [], createdAt: serverTimestamp(), updatedAt: serverTimestamp() }),
+      ...overrides,
+    });
+    if (withLesson) batch.set(doc(db, `courses/${id}/lessons/l1`), { title: 'Урок 1', blocks: [], updatedAt: serverTimestamp() });
+    if (withStamp) batch.set(doc(db, `rateLimits/${uid}`), { createCourse: serverTimestamp() }, { merge: true });
+    return batch.commit();
+  }
+
+  it('автор создаёт черновик с первым уроком', async () => {
+    await assertSucceeds(create(as(env, 'alice'), 'alice'));
+  });
+
+  it('не чаще раза в 30 секунд', async () => {
+    await assertSucceeds(create(as(env, 'alice'), 'alice', { id: 'a' }));
+    await assertFails(create(as(env, 'alice'), 'alice', { id: 'b' }));
+    await seed(env, 'rateLimits/alice', { createCourse: Timestamp.fromMillis(Date.now() - 31000) });
+    await assertSucceeds(create(as(env, 'alice'), 'alice', { id: 'c' }));
+  });
+
+  it('нельзя создать без отметки лимита, опубликованным, от чужого имени или с лишним', async () => {
+    const db = as(env, 'alice', { verified: true });
+    await assertFails(create(db, 'alice', { withStamp: false }));
+    await assertFails(create(db, 'alice', { overrides: { status: 'published' } }));
+    await assertFails(create(db, 'alice', { overrides: { status: 'pending_review' } }));
+    await assertFails(create(db, 'alice', { overrides: { hasPublishedVersion: true } }));
+    await assertFails(create(db, 'alice', { overrides: { authorId: 'bob' } }));
+    await assertFails(create(db, 'alice', { overrides: { likesCount: 100 } }));
+    await assertFails(create(db, 'alice', { overrides: { title: 'ab' } }));
+    await assertFails(create(as(env, 'banned'), 'banned'));
+    await assertFails(create(anon(env), 'x'));
   });
 
   it('удаляет автор или админ, но не посторонний и не забаненный', async () => {
@@ -132,8 +165,33 @@ describe('courses: переходы статуса', () => {
     await assertFails(updateDoc(doc(as(env, 'alice', { verified: true }), 'courses/pending'), to('published')));
   });
 
-  it('админ через клиент тоже не публикует (только функция moderateCourse)', async () => {
-    await assertFails(updateDoc(doc(as(env, 'admin', { verified: true }), 'courses/pending'), to('published')));
+  it('админ отклоняет только с причиной и только курс на проверке', async () => {
+    const admin = as(env, 'admin');
+    await assertFails(updateDoc(doc(admin, 'courses/pending'), to('rejected')));
+    await assertFails(updateDoc(doc(admin, 'courses/pending'), to('rejected', { rejectionReason: 'нет' })));
+    await assertFails(updateDoc(doc(admin, 'courses/c1'), to('rejected', { rejectionReason: 'Добавьте задания.' })));
+    await assertFails(updateDoc(doc(as(env, 'bob'), 'courses/pending'), to('rejected', { rejectionReason: 'Добавьте задания.' })));
+    await assertSucceeds(updateDoc(doc(admin, 'courses/pending'), to('rejected', { rejectionReason: 'Добавьте задания.' })));
+  });
+
+  it('админ публикует только вместе со снимком, записанным в той же транзакции', async () => {
+    const admin = as(env, 'admin');
+    const approve = (db, { withSnapshot = true, courseId = 'pending', extra = {} } = {}) => {
+      const batch = writeBatch(db);
+      if (withSnapshot) {
+        batch.set(doc(db, `publicCourses/${courseId}`), { authorId: 'alice', title: 'Курс', approvedAt: serverTimestamp() }, { merge: true });
+      }
+      batch.update(doc(db, `courses/${courseId}`), to('published', { rejectionReason: null, hasPublishedVersion: true, ...extra }));
+      return batch.commit();
+    };
+    await assertFails(approve(admin, { withSnapshot: false }));
+    await assertFails(approve(admin, { courseId: 'c1' }));
+    await assertFails(approve(admin, { extra: { title: 'Подменил' } }));
+    await assertFails(approve(as(env, 'alice', { verified: true })));
+    // Старый снимок без свежей отметки approvedAt не считается.
+    await seed(env, 'publicCourses/pending', { authorId: 'alice', approvedAt: new Date(0) });
+    await assertFails(updateDoc(doc(admin, 'courses/pending'), to('published', { rejectionReason: null, hasPublishedVersion: true })));
+    await assertSucceeds(approve(admin));
   });
 
   it('отозвать с проверки и начать правку опубликованного можно', async () => {

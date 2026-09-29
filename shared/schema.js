@@ -1,8 +1,7 @@
 /**
  * Единый источник правды о структуре данных Polygloto.
  *
- * Этот файл импортируют и фронтенд (src/), и Cloud Functions (functions/,
- * копируется скриптом scripts/sync-shared.mjs). Firestore Security Rules
+ * Этот файл импортирует фронтенд (src/) и тесты. Firestore Security Rules
  * не умеют импортировать JS, поэтому те же лимиты продублированы в
  * firestore.rules — при изменении констант ниже обязательно обновите правила
  * (тесты в tests/rules проверяют граничные значения).
@@ -54,8 +53,8 @@ export const COURSE_STATUS = Object.freeze({
 
 /**
  * Разрешённые клиенту (автору) переходы статуса рабочей версии курса.
- * published/rejected выставляет только Cloud Function moderateCourse.
- * Дублируется в firestore.rules (функция authorStatusChangeAllowed).
+ * published/rejected выставляет только админ (правило isModeration).
+ * Дублируется в firestore.rules (функция isAuthorStatusChange).
  */
 export const AUTHOR_STATUS_TRANSITIONS = Object.freeze({
   [COURSE_STATUS.DRAFT]: [COURSE_STATUS.PENDING_REVIEW],
@@ -120,8 +119,9 @@ export const LIMITS = Object.freeze({
   REJECTION_REASON_MIN: 5,
   REJECTION_REASON_MAX: 2000,
 
-  AVATAR_MAX_BYTES: 2 * 1024 * 1024,
-  AVATAR_SIZE_PX: 256,
+  // Аватар хранится в профиле как data URL (Storage на тарифе Spark недоступен).
+  AVATAR_DATA_URL_MAX: 40000,
+  AVATAR_SIZE_PX: 160,
   AVATAR_SOURCE_MAX_BYTES: 15 * 1024 * 1024,
 });
 
@@ -133,18 +133,6 @@ export const RATE_LIMITS = Object.freeze({
 
 /** Задержка автосохранения черновика (мс). */
 export const AUTOSAVE_DEBOUNCE_MS = 3000;
-
-/** Регион Cloud Functions. */
-export const FUNCTIONS_REGION = 'europe-west1';
-
-/** Имена callable Cloud Functions — единый список для клиента и сервера. */
-export const CALLABLES = Object.freeze({
-  SYNC_ROLE: 'syncRole',
-  CREATE_COURSE: 'createCourse',
-  MODERATE_COURSE: 'moderateCourse',
-  ADD_COMMENT: 'addComment',
-  SET_USER_BAN: 'setUserBan',
-});
 
 /**
  * Возвращает поисковые ключи для курса: все префиксы слов названия и языка

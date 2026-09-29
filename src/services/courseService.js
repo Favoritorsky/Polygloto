@@ -17,9 +17,10 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
-import { CALLABLES, COLLECTIONS, COURSE_STATUS, LIMITS, SUBCOLLECTIONS } from '../../shared/schema.js';
-import { db, functions } from './firebase.js';
+import { COLLECTIONS, CONTENT_SUBCOLLECTIONS, COURSE_STATUS, LIMITS, RATE_LIMITS, SUBCOLLECTIONS } from '../../shared/schema.js';
+import { db } from './firebase.js';
+import { deleteAllDocs } from './batchUtils.js';
+import { stampRateLimit, withRateLimit } from './rateLimit.js';
 
 /** Вид раздела курса: уроки или справочник. */
 export const SECTION_KINDS = Object.freeze({
@@ -47,9 +48,34 @@ export function validateCourseMeta({ title, language, description }) {
   return errors;
 }
 
-export async function createCourse({ title, language, description }) {
-  const result = await httpsCallable(functions, CALLABLES.CREATE_COURSE)({ title, language, description });
-  return result.data.courseId;
+/**
+ * Создаёт черновик с первым уроком одной пакетной записью вместе с отметкой
+ * rateLimits.createCourse: правила пропустят её не чаще раза в 30 с.
+ */
+export async function createCourse(uid, { title, language, description = '' }) {
+  const ref = doc(collection(db, COLLECTIONS.COURSES));
+  const lessonRef = doc(collection(ref, SUBCOLLECTIONS.LESSONS));
+  const batch = writeBatch(db);
+  batch.set(ref, {
+    authorId: uid,
+    title: title.trim(),
+    language: language.trim(),
+    description: description.trim(),
+    categories: [],
+    lessonOrder: [lessonRef.id],
+    referenceOrder: [],
+    status: COURSE_STATUS.DRAFT,
+    rejectionReason: null,
+    hasPublishedVersion: false,
+    submittedAt: null,
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp(),
+  });
+  // Первый пустой урок, чтобы редактор сразу был готов к работе.
+  batch.set(lessonRef, { title: 'Урок 1', blocks: [], updatedAt: serverTimestamp() });
+  stampRateLimit(batch, uid, 'createCourse');
+  await withRateLimit(uid, 'createCourse', RATE_LIMITS.CREATE_COURSE_SECONDS, () => batch.commit());
+  return ref.id;
 }
 
 export function subscribeToCourse(courseId, onData, onError) {
@@ -88,8 +114,25 @@ export function submitForReview(courseId) {
   });
 }
 
-export function deleteCourse(courseId) {
-  return deleteDoc(courseRef(courseId));
+/**
+ * Удаляет курс целиком. Без Cloud Functions каскад выполняет клиент, в
+ * порядке, который разрешают правила: сначала обсуждение и реакции (их можно
+ * прочитать, пока курс опубликован), затем опубликованный снимок, затем
+ * рабочий контент и сам курс. Голоса читателей (ratings) клиент перечислить
+ * не может — они приватны и остаются недоступными «сиротами».
+ */
+export async function deleteCourse(courseId) {
+  const course = courseRef(courseId);
+  const publicRef = doc(db, COLLECTIONS.PUBLIC_COURSES, courseId);
+  const isPublished = (await getDoc(publicRef)).exists();
+  if (isPublished) {
+    await deleteAllDocs(collection(course, SUBCOLLECTIONS.COMMENTS));
+    await deleteAllDocs(collection(course, SUBCOLLECTIONS.REACTIONS));
+    for (const name of CONTENT_SUBCOLLECTIONS) await deleteAllDocs(collection(publicRef, name));
+    await deleteDoc(publicRef);
+  }
+  for (const name of CONTENT_SUBCOLLECTIONS) await deleteAllDocs(collection(course, name));
+  await deleteDoc(course);
 }
 
 // ---------- Разделы (уроки / справочник) ----------

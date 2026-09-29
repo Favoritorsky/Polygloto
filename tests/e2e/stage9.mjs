@@ -24,7 +24,7 @@ async function seedPublishedCourse(authorId) {
     categories: [{ id: 'verb', name: 'Глаголы', color: '#e76f51' }],
     lessonOrder: ['l1', 'l2'], referenceOrder: ['r1'],
     toc: { lessons: [{ id: 'l1', title: 'Приветствия' }, { id: 'l2', title: 'Числа' }], reference: [{ id: 'r1', title: 'Алфавит' }] },
-    lessonsCount: 2, wordsCount: 1, likesCount: 0, dislikesCount: 0, score: 0, commentsCount: 0,
+    lessonsCount: 2, wordsCount: 1, likesCount: 0, dislikesCount: 0, score: 0,
     publishedAt: now, updatedAt: now,
   });
   await ref.collection('lessons').doc('l1').set({
@@ -97,7 +97,7 @@ try {
 
   await reader.getByRole('button', { name: /Нравится: 0/ }).click();
   await reader.getByRole('button', { name: 'Нравится: 1' }).waitFor({ timeout: 15000 });
-  assert(true, 'лайк засчитан (счётчик пересчитан триггером)');
+  assert(true, 'лайк засчитан (счётчик обновлён транзакцией)');
   await reader.getByRole('button', { name: /Не нравится: 0/ }).click();
   await reader.getByRole('button', { name: 'Не нравится: 1' }).waitFor({ timeout: 15000 });
   await reader.getByRole('button', { name: 'Нравится: 0' }).waitFor({ timeout: 15000 });

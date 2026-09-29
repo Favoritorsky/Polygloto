@@ -30,7 +30,8 @@ try {
   await addWord('pona', 'хороший', 'adjective');
   await addWord('toki pona', 'токипона', 'phrase');
   await addWord('mi', 'я', 'pronoun');
-  assert((await page.getByText('Слов: 4').count()) === 1, 'в словаре 4 слова');
+  await page.getByText('Слов: 4').waitFor();
+  assert(true, 'в словаре 4 слова');
 
   await page.getByLabel('Поиск по словарю').fill('ХОР');
   await page.getByText('Найдено: 1 из 4').waitFor();

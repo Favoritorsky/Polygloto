@@ -20,7 +20,7 @@ async function publish(title, language, { likes = 0, dislikes = 0, daysAgo = 0 }
     categories: [], lessonOrder: [], referenceOrder: [], toc: { lessons: [], reference: [] },
     titleLower: normalizeText(title), languageLower: normalizeText(language),
     searchKeywords: buildSearchKeywords(title, language),
-    likesCount: likes, dislikesCount: dislikes, score: likes - dislikes, commentsCount: 0,
+    likesCount: likes, dislikesCount: dislikes, score: likes - dislikes,
     lessonsCount: 1, wordsCount: 0,
     publishedAt: Timestamp.fromMillis(Date.now() - daysAgo * 86400000), updatedAt: FieldValue.serverTimestamp(),
   });
@@ -33,6 +33,14 @@ await publish(`Разговорник ${tag}`, langOther, { likes: 2, dislikes: 
 // Для пагинации: 13 курсов ещё одного языка.
 const langMany = `Многоязык ${tag}`;
 for (let i = 0; i < 13; i += 1) await publish(`Урок ${tag} номер ${i + 1}`, langMany, { likes: i });
+// Список языков при одобрении ведёт админка (moderationService.approveCourse); здесь курсы
+// созданы напрямую, поэтому дописываем языки так же, как это сделала бы она.
+{
+  const ref = db.doc('catalogMeta/languages');
+  const items = (await ref.get()).data()?.items ?? [];
+  for (const [name, count] of [[langMain, 2], [langOther, 1], [langMany, 13]]) items.push({ key: normalizeText(name), name, count });
+  await ref.set({ items });
+}
 
 const titles = (page) => page.locator('article h3').allInnerTexts();
 
@@ -64,7 +72,7 @@ try {
   await page.waitForURL((u) => !u.search.includes('q='));
   assert((await page.getByPlaceholder('Поиск по названию или языку').inputValue()) === '', 'сброс очищает поиск');
 
-  // Фильтр по языку: список языков строит триггер, ждём появления.
+  // Фильтр по языку: список языков ведёт админ при публикации (здесь — сид).
   const langSelect = page.getByLabel('Язык', { exact: true });
   for (let i = 0; i < 30 && !(await langSelect.locator('option', { hasText: langMain }).count()); i += 1) {
     await page.waitForTimeout(500);

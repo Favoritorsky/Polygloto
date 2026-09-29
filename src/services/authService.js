@@ -13,10 +13,8 @@ import {
   signOut,
   updatePassword,
 } from 'firebase/auth';
-import { httpsCallable } from 'firebase/functions';
-import { CALLABLES } from '../../shared/schema.js';
-import { auth, functions } from './firebase.js';
-import { updateOwnProfile, waitForUserDoc } from './userService.js';
+import { auth } from './firebase.js';
+import { createOwnProfile, promoteToAuthor } from './userService.js';
 
 function actionCodeSettings(path = '/') {
   return { url: `${window.location.origin}${path}` };
@@ -28,19 +26,18 @@ export function subscribeToAuth(callback) {
 }
 
 /**
- * Регистрация. Документ users/{uid} создаёт Cloud Function onUserCreated;
- * дождавшись его, записываем выбранное имя. Если триггер задержался,
- * имя можно будет поменять в настройках — регистрация всё равно успешна.
+ * Регистрация. Профиль users/{uid} создаёт сам клиент (правила разрешают
+ * только роль reader и никаких служебных значений). Если запись профиля
+ * не удалась, AuthProvider создаст его при следующем входе.
  */
 export async function register({ email, password, displayName }) {
   const { user } = await createUserWithEmailAndPassword(auth, email.trim(), password);
   // Письмо отправляем сразу, не дожидаясь профиля.
   const verification = sendEmailVerification(user, actionCodeSettings('/account')).catch(() => null);
   try {
-    await waitForUserDoc(user.uid);
-    await updateOwnProfile(user.uid, { displayName });
+    await createOwnProfile(user.uid, { displayName });
   } catch {
-    // Профиль появится позже; имя по умолчанию «Автор-xxxxxx».
+    // Профиль будет создан с именем по умолчанию; имя можно сменить в профиле.
   }
   await verification;
   return user;
@@ -74,8 +71,8 @@ export async function changePassword({ currentPassword, newPassword }) {
 
 /**
  * Перечитывает пользователя (после перехода по ссылке из письма),
- * обновляет токен (чтобы в нём появился email_verified) и просит сервер
- * повысить роль reader → user. Возвращает актуальный emailVerified.
+ * обновляет токен (чтобы в нём появился email_verified) и повышает роль
+ * reader → user. Возвращает актуальный emailVerified.
  */
 export async function refreshVerificationStatus() {
   const user = auth.currentUser;
@@ -83,12 +80,13 @@ export async function refreshVerificationStatus() {
   await user.reload();
   if (user.emailVerified) {
     await user.getIdToken(true);
-    await httpsCallable(functions, CALLABLES.SYNC_ROLE)();
+    await promoteToAuthor(user.uid);
   }
   return user.emailVerified;
 }
 
 /** Повышение роли без reload — когда токен уже содержит email_verified. */
 export function syncRole() {
-  return httpsCallable(functions, CALLABLES.SYNC_ROLE)();
+  const user = auth.currentUser;
+  return user ? promoteToAuthor(user.uid) : Promise.resolve();
 }

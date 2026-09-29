@@ -80,7 +80,6 @@ export default function CoursePage() {
                   <ul className={styles.stats}>
                     <li>Уроков: {course.lessonsCount ?? 0}</li>
                     <li>Слов в словаре: {course.wordsCount ?? 0}</li>
-                    <li>Комментариев: {course.commentsCount ?? 0}</li>
                   </ul>
                 </div>
                 <RatingButtons course={course} />

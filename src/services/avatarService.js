@@ -1,16 +1,17 @@
 /**
- * Аватары в Storage: avatars/{uid}/{время}.jpg. Картинка уменьшается и
- * обрезается до квадрата в браузере, поэтому в хранилище попадает маленький
- * JPEG без метаданных исходного файла (EXIF с геопозицией и т.п.).
+ * Аватары без Firebase Storage (на тарифе Spark новый бакет Storage создать
+ * нельзя). Картинка обрезается до квадрата, уменьшается до 160×160 и
+ * сохраняется JPEG прямо в профиле (users.photoURL, data URL до 40 000
+ * символов — это проверяют правила). Метаданные исходного файла (EXIF с
+ * геопозицией и т.п.) при перекодировании теряются.
  */
-import { deleteObject, getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { LIMITS } from '../../shared/schema.js';
 import { UserFacingError } from './errors.js';
-import { storage } from './firebase.js';
 import { updateOwnProfile } from './userService.js';
 
 const ACCEPTED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
 export const AVATAR_ACCEPT = ACCEPTED_TYPES.join(',');
+const QUALITIES = [0.85, 0.75, 0.6, 0.45, 0.3];
 
 export function validateAvatarFile(file) {
   if (!file) return 'Выберите файл.';
@@ -19,8 +20,8 @@ export function validateAvatarFile(file) {
   return null;
 }
 
-/** Квадратная обрезка по центру и уменьшение до AVATAR_SIZE_PX. */
-async function resizeToSquareJpeg(file) {
+/** Квадратная обрезка по центру, уменьшение и JPEG, укладывающийся в лимит правил. */
+export async function imageToAvatarDataUrl(file) {
   let bitmap;
   try {
     bitmap = await createImageBitmap(file);
@@ -37,39 +38,21 @@ async function resizeToSquareJpeg(file) {
   ctx.fillRect(0, 0, size, size);
   ctx.drawImage(bitmap, (bitmap.width - side) / 2, (bitmap.height - side) / 2, side, side, 0, 0, size, size);
   bitmap.close?.();
-  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.88));
-  if (!blob) throw new UserFacingError('Не удалось обработать картинку.');
-  return blob;
-}
-
-async function deleteByUrl(url) {
-  if (!url) return;
-  try {
-    await deleteObject(ref(storage, url));
-  } catch {
-    // Старый файл уже удалён или ссылка не наша — профиль от этого не страдает.
+  for (const quality of QUALITIES) {
+    const url = canvas.toDataURL('image/jpeg', quality);
+    if (url.startsWith('data:image/jpeg;base64,') && url.length <= LIMITS.AVATAR_DATA_URL_MAX) return url;
   }
+  throw new UserFacingError('Не удалось сжать картинку. Попробуйте другой файл.');
 }
 
-/** Загружает новый аватар, записывает ссылку в профиль и удаляет прежний файл. */
-export async function uploadAvatar(uid, file, previousUrl) {
+export async function uploadAvatar(uid, file) {
   const problem = validateAvatarFile(file);
   if (problem) throw new UserFacingError(problem);
-  const blob = await resizeToSquareJpeg(file);
-  const fileRef = ref(storage, `avatars/${uid}/${Date.now()}.jpg`);
-  await uploadBytes(fileRef, blob, { contentType: 'image/jpeg', cacheControl: 'public, max-age=31536000' });
-  const url = await getDownloadURL(fileRef);
-  try {
-    await updateOwnProfile(uid, { photoURL: url });
-  } catch (error) {
-    await deleteObject(fileRef).catch(() => {});
-    throw error;
-  }
-  await deleteByUrl(previousUrl);
+  const url = await imageToAvatarDataUrl(file);
+  await updateOwnProfile(uid, { photoURL: url });
   return url;
 }
 
-export async function removeAvatar(uid, currentUrl) {
-  await updateOwnProfile(uid, { photoURL: null });
-  await deleteByUrl(currentUrl);
+export function removeAvatar(uid) {
+  return updateOwnProfile(uid, { photoURL: null });
 }

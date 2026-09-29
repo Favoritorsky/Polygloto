@@ -11,9 +11,6 @@ import {
   persistentLocalCache,
   persistentMultipleTabManager,
 } from 'firebase/firestore';
-import { connectFunctionsEmulator, getFunctions } from 'firebase/functions';
-import { connectStorageEmulator, getStorage } from 'firebase/storage';
-import { FUNCTIONS_REGION } from '../../shared/schema.js';
 
 const env = import.meta.env;
 
@@ -46,15 +43,9 @@ export const db = app
         : persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
     })
   : null;
-export const functions = app
-  ? getFunctions(app, env.VITE_FIREBASE_FUNCTIONS_REGION || FUNCTIONS_REGION)
-  : null;
-export const storage = app ? getStorage(app) : null;
 
 if (app && useEmulators) {
   const host = env.VITE_EMULATOR_HOST || '127.0.0.1';
   connectAuthEmulator(auth, `http://${host}:9099`, { disableWarnings: true });
   connectFirestoreEmulator(db, host, 8080);
-  connectFunctionsEmulator(functions, host, 5001);
-  connectStorageEmulator(storage, host, 9199);
 }

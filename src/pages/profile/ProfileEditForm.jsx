@@ -28,7 +28,7 @@ export default function ProfileEditForm({ uid, profile, onDone }) {
     setAvatarBusy(true);
     setAvatarError('');
     try {
-      await uploadAvatar(uid, file, profile.photoURL);
+      await uploadAvatar(uid, file);
     } catch (err) {
       setAvatarError(toUserMessage(err));
     } finally {
@@ -41,7 +41,7 @@ export default function ProfileEditForm({ uid, profile, onDone }) {
     setAvatarBusy(true);
     setAvatarError('');
     try {
-      await removeAvatar(uid, profile.photoURL);
+      await removeAvatar(uid);
     } catch (err) {
       setAvatarError(toUserMessage(err));
     } finally {

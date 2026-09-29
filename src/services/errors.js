@@ -31,12 +31,8 @@ export function toUserMessage(error) {
   if (!error) return '';
   const code = String(error.code || '').replace(/^(firestore|functions|storage)\//, '');
   if (AUTH_MESSAGES[error.code]) return AUTH_MESSAGES[error.code];
-  // Ошибки из Cloud Functions (HttpsError) уже содержат русское сообщение.
-  if (String(error.code || '').startsWith('functions/') && error.message && code !== 'internal') {
-    return error.message;
-  }
-  if (FIRESTORE_MESSAGES[code]) return FIRESTORE_MESSAGES[code];
   if (error.userMessage) return error.userMessage;
+  if (FIRESTORE_MESSAGES[code]) return FIRESTORE_MESSAGES[code];
   return 'Что-то пошло не так. Попробуйте ещё раз.';
 }
 

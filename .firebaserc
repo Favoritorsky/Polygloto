@@ -1,5 +1,6 @@
 {
   "projects": {
-    "default": "demo-polygloto"
+    "default": "selfi-a04df",
+    "demo": "demo-polygloto"
   }
 }

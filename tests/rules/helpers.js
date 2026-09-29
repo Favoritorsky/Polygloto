@@ -1,4 +1,4 @@
-// Общая инициализация тестового окружения правил (эмулятор Firestore + Storage).
+// Общая инициализация тестового окружения правил (эмулятор Firestore).
 import { readFileSync } from 'node:fs';
 import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import { doc, setDoc, Timestamp } from 'firebase/firestore';
@@ -9,7 +9,6 @@ export async function createEnv() {
   return initializeTestEnvironment({
     projectId: PROJECT_ID,
     firestore: { rules: readFileSync('firestore.rules', 'utf8'), host: '127.0.0.1', port: 8080 },
-    storage: { rules: readFileSync('storage.rules', 'utf8'), host: '127.0.0.1', port: 9199 },
   });
 }
 
@@ -22,7 +21,7 @@ export function anon(env) {
   return env.unauthenticatedContext().firestore();
 }
 
-/** Записывает данные в обход правил (как это делают Cloud Functions). */
+/** Записывает данные в обход правил (как админ через консоль или сид). */
 export async function seed(env, path, data) {
   await env.withSecurityRulesDisabled(async (ctx) => {
     await setDoc(doc(ctx.firestore(), path), data);
@@ -36,7 +35,6 @@ export function userProfile(overrides = {}) {
     bio: '',
     role: 'reader',
     banned: false,
-    commentsCount: 0,
     createdAt: Timestamp.now(),
     ...overrides,
   };

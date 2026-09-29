@@ -8,8 +8,8 @@ import AsyncState from '../../components/ui/AsyncState.jsx';
 import Button from '../../components/ui/Button.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
 import { useReactions } from '../../hooks/useReactions.js';
-import { useSubscription } from '../../hooks/useSubscription.js';
-import { COMMENTS_PAGE, addComment, deleteComment, subscribeToComments, validateComment } from '../../services/commentService.js';
+import { useAsync, useSubscription } from '../../hooks/useSubscription.js';
+import { COMMENTS_PAGE, addComment, countComments, deleteComment, subscribeToComments, validateComment } from '../../services/commentService.js';
 import { toUserMessage } from '../../services/errors.js';
 import { toggleReaction } from '../../services/reactionService.js';
 import { useCoursePage } from './coursePageContext.js';
@@ -19,7 +19,7 @@ function formatDate(ts) {
   return ts?.toDate ? ts.toDate().toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' }) : 'только что';
 }
 
-function CommentForm({ courseId }) {
+function CommentForm({ courseId, author, onSent }) {
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -36,7 +36,8 @@ function CommentForm({ courseId }) {
     const sent = text;
     setText('');
     try {
-      await addComment(courseId, sent);
+      await addComment(courseId, author, sent);
+      onSent();
     } catch (err) {
       setText((current) => current || sent);
       setError(toUserMessage(err));
@@ -74,7 +75,7 @@ function CommentForm({ courseId }) {
 /** Обсуждение курса: комментарии с реакциями, удаление своих (и модерация автором курса/админом). */
 export default function CommentsSection() {
   const { course } = useCoursePage();
-  const { user, isAdmin, isBanned } = useAuth();
+  const { user, profile, isAdmin, isBanned } = useAuth();
   const [count, setCount] = useState(COMMENTS_PAGE);
   const [actionError, setActionError] = useState('');
   const comments = useSubscription(
@@ -82,6 +83,11 @@ export default function CommentsSection() {
     `${course.id}/${count}`,
   );
   const ids = (comments.data ?? []).map((c) => c.id);
+  // Общее число пересчитывается после каждой подтверждённой сервером записи
+  // (список по подписке обновляется раньше, чем запись дойдёт до сервера).
+  const [writes, setWrites] = useState(0);
+  const recount = () => setWrites((n) => n + 1);
+  const total = useAsync(() => countComments(course.id), `${course.id}/${writes}`);
   const reactions = useReactions(course.id, 'comment', ids, user?.uid);
 
   async function handleDelete(comment) {
@@ -89,6 +95,7 @@ export default function CommentsSection() {
     setActionError('');
     try {
       await deleteComment(course.id, comment.id);
+      recount();
     } catch (err) {
       setActionError(toUserMessage(err));
     }
@@ -107,12 +114,13 @@ export default function CommentsSection() {
 
   return (
     <section className={styles.wrap}>
-      {user && !isBanned && <CommentForm courseId={course.id} />}
+      {user && profile && !isBanned && <CommentForm courseId={course.id} author={{ uid: user.uid, displayName: profile.displayName }} onSent={recount} />}
       {!user && (
         <p className={styles.muted}>
           <Link to="/login">Войдите</Link> или <Link to="/register">зарегистрируйтесь</Link>, чтобы оставить комментарий.
         </p>
       )}
+      {total.data !== undefined && <p className={styles.muted}>Комментариев: {total.data}</p>}
       {actionError && <Alert tone="error">{actionError}</Alert>}
       <AsyncState
         loading={comments.loading}
@@ -125,7 +133,7 @@ export default function CommentsSection() {
           {comments.data?.map((comment) => (
             <li key={comment.id} className={styles.comment}>
               <div className={styles.head}>
-                <Avatar name={comment.authorName} url={comment.authorPhotoURL} seed={comment.authorId} size={28} />
+                <Avatar name={comment.authorName} seed={comment.authorId} size={28} />
                 <Link to={`/users/${comment.authorId}`} className={styles.author}>
                   {comment.authorName}
                 </Link>

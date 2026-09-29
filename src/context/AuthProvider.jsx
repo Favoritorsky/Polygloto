@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ROLES } from '../../shared/schema.js';
 import { subscribeToAuth, syncRole } from '../services/authService.js';
-import { subscribeToUser } from '../services/userService.js';
+import { createOwnProfile, isProfileBeingCreated, subscribeToUser } from '../services/userService.js';
 import { AuthContext } from './authContext.js';
 
 export default function AuthProvider({ children }) {
@@ -39,7 +39,18 @@ export default function AuthProvider({ children }) {
   const profileLoading = Boolean(uid) && profileState.uid !== uid;
   const isVerified = Boolean(user?.emailVerified);
 
-  // Почта подтверждена, а роль ещё reader — просим сервер повысить (один раз на uid).
+  // Профиля нет (регистрация прервалась до его записи) — создаём с именем по умолчанию.
+  const profileMissing = Boolean(uid) && profileState.uid === uid && profileState.profile === null && !profileState.error;
+  const creationRequested = useRef(null);
+  useEffect(() => {
+    if (!profileMissing || isProfileBeingCreated(uid) || creationRequested.current === uid) return;
+    creationRequested.current = uid;
+    createOwnProfile(uid).catch(() => {
+      creationRequested.current = null;
+    });
+  }, [uid, profileMissing]);
+
+  // Почта подтверждена, а роль ещё reader — повышаем (один раз на uid).
   useEffect(() => {
     if (!uid || !isVerified || profile?.role !== ROLES.READER) return;
     if (syncRequested.current === uid) return;

@@ -9,19 +9,12 @@ process.env.FIRESTORE_EMULATOR_HOST ??= '127.0.0.1:8080';
 const db = getFirestore(getApps()[0] ?? initializeApp({ projectId: 'demo-polygloto' }));
 const fixtures = new URL('./fixtures/', import.meta.url).pathname;
 
-async function avatarFiles(uid) {
-  const res = await fetch(`http://127.0.0.1:9199/v0/b/demo-polygloto.appspot.com/o?prefix=${encodeURIComponent(`avatars/${uid}/`)}`, {
-    headers: { Authorization: 'Bearer owner' },
-  });
-  return (await res.json()).items ?? [];
-}
-
 async function publish(authorId, title, likes, dislikes) {
   await db.collection('publicCourses').add({
     authorId, authorName: 'Профилист', title, language: 'Квенья', description: '', categories: [],
     lessonOrder: [], referenceOrder: [], toc: { lessons: [], reference: [] },
     titleLower: normalizeText(title), languageLower: 'квенья', searchKeywords: buildSearchKeywords(title, 'Квенья'),
-    likesCount: likes, dislikesCount: dislikes, score: likes - dislikes, commentsCount: 0, lessonsCount: 1, wordsCount: 0,
+    likesCount: likes, dislikesCount: dislikes, score: likes - dislikes, lessonsCount: 1, wordsCount: 0,
     publishedAt: FieldValue.serverTimestamp(), updatedAt: FieldValue.serverTimestamp(),
   });
 }
@@ -54,7 +47,7 @@ try {
   await page.locator('header').getByText('Элронд').waitFor();
   assert(true, 'имя в шапке сайта обновилось');
 
-  // Аватар
+  // Аватар: хранится в профиле сжатым JPEG (data URL), без Storage.
   await page.getByRole('button', { name: 'Редактировать профиль' }).click();
   await page.getByLabel('Файл фотографии').setInputFiles(`${fixtures}not-image.txt`);
   await page.getByText('Подходят только картинки').waitFor();
@@ -64,26 +57,13 @@ try {
   await img.waitFor();
   await page.waitForFunction(() => document.querySelector('main img')?.naturalWidth > 0);
   const size = await img.evaluate((el) => [el.naturalWidth, el.naturalHeight]);
-  assert(size[0] === 256 && size[1] === 256, `картинка 600×300 обрезана до квадрата 256×256 (${size.join('×')})`);
-  assert((await img.getAttribute('src')).includes(`avatars%2F${uid}%2F`), 'файл лежит в папке пользователя');
-  const first = await avatarFiles(uid);
-  assert(first.length === 1 && first[0].name.endsWith('.jpg'), 'в хранилище один JPEG');
-
-  await page.getByLabel('Файл фотографии').setInputFiles(`${fixtures}avatar-wide.png`);
-  await page.waitForFunction((old) => document.querySelector('main img')?.src !== old, await img.getAttribute('src'));
-  let files = [];
-  for (let i = 0; i < 20; i += 1) {
-    files = await avatarFiles(uid);
-    if (files.length === 1 && files[0].name !== first[0].name) break;
-    await page.waitForTimeout(250);
-  }
-  assert(files.length === 1 && files[0].name !== first[0].name, 'смена фото удаляет старый файл');
+  assert(size[0] === 160 && size[1] === 160, `картинка 600×300 обрезана до квадрата 160×160 (${size.join('×')})`);
+  const stored = (await db.doc(`users/${uid}`).get()).data().photoURL;
+  assert(stored.startsWith('data:image/jpeg;base64,') && stored.length <= 40000, `в профиле JPEG ${stored.length} символов`);
 
   await page.getByRole('button', { name: 'Удалить фото' }).click();
   await page.locator('main img').waitFor({ state: 'detached' });
-  // Профиль обновляется раньше, чем удаляется файл: ждём и файл.
-  for (let i = 0; i < 20 && (await avatarFiles(uid)).length > 0; i += 1) await page.waitForTimeout(250);
-  assert((await avatarFiles(uid)).length === 0, 'удаление фото убирает файл из хранилища');
+  assert((await db.doc(`users/${uid}`).get()).data().photoURL === null, 'удаление фото очищает профиль');
   await page.getByLabel('Файл фотографии').setInputFiles(`${fixtures}avatar-wide.png`);
   await page.locator('main img').first().waitFor();
   await page.getByRole('button', { name: 'Отмена' }).click();
@@ -96,9 +76,14 @@ try {
   assert(/2\s*курса/.test(stats) && /30\s*лайков/.test(stats) && /86%/.test(stats), `статистика: ${stats.replace(/\s+/g, ' ')}`);
   const earned = async () => page.locator('li', { hasText: 'Получен' }).allInnerTexts();
   assert((await earned()).length === 2, 'бейджи «Автор» и «Любимец публики» получены');
-  await db.doc(`users/${uid}`).update({ commentsCount: 10 });
+  // 10 комментариев в разных курсах (число считается запросом count() по комментариям).
+  const courseIds = (await db.collection('publicCourses').where('authorId', '==', uid).get()).docs.map((d) => d.id);
+  for (let i = 0; i < 10; i += 1) {
+    await db.collection(`courses/${courseIds[i % courseIds.length]}/comments`).add({ authorId: uid, authorName: 'Элронд', text: `Комментарий ${i}`, createdAt: FieldValue.serverTimestamp() });
+  }
+  await page.reload();
   await page.locator('li', { hasText: 'Собеседник' }).getByText('Получен').waitFor();
-  assert(true, 'бейдж «Собеседник» появился сразу после 10-го комментария');
+  assert(/10\s*комментариев/.test(await page.getByLabel('Статистика').innerText()), 'бейдж «Собеседник» после 10 комментариев, число в статистике');
   const cards = await page.locator('article h3').allInnerTexts();
   assert(cards[0] === 'Квенья для начинающих', 'курсы автора — лучшие сверху');
 

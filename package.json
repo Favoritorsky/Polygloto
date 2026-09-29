@@ -9,10 +9,8 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "test": "vitest run --project unit",
-    "test:rules": "firebase emulators:exec --only firestore,storage --project demo-polygloto \"vitest run --project rules\"",
-    "test:functions": "node scripts/sync-shared.mjs && firebase emulators:exec --only auth,firestore,functions,storage --project demo-polygloto \"vitest run --project functions\"",
-    "emulators": "node scripts/sync-shared.mjs && firebase emulators:start --only auth,firestore,functions,storage --project demo-polygloto",
-    "sync-shared": "node scripts/sync-shared.mjs",
+    "test:rules": "firebase emulators:exec --only firestore --project demo-polygloto \"vitest run --project rules\"",
+    "emulators": "firebase emulators:start --only auth,firestore --project demo-polygloto",
     "test:e2e": "node tests/e2e/run-all.mjs"
   },
   "license": "UNLICENSED",

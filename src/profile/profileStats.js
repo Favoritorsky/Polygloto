@@ -1,10 +1,11 @@
 /**
- * Статистика и бейджи профиля. Считаются на клиенте из уже загруженных
- * данных (опубликованные курсы + счётчик комментариев в users), поэтому их
- * нельзя «накрутить»: все исходные числа пишет только сервер.
+ * Статистика и бейджи профиля. Считаются на клиенте из опубликованных курсов
+ * (их счётчики оценок правила меняют только вместе с голосами) и числа
+ * комментариев (запрос count() по самим комментариям), поэтому «накрутить»
+ * их можно только настоящими голосами и комментариями.
  */
 
-export function computeProfileStats(courses, profile) {
+export function computeProfileStats(courses, commentsCount = 0) {
   const likes = courses.reduce((sum, c) => sum + (c.likesCount ?? 0), 0);
   const dislikes = courses.reduce((sum, c) => sum + (c.dislikesCount ?? 0), 0);
   const votes = likes + dislikes;
@@ -14,7 +15,7 @@ export function computeProfileStats(courses, profile) {
     dislikes,
     // Средний рейтинг — доля положительных оценок по всем курсам автора.
     approval: votes > 0 ? Math.round((likes / votes) * 100) : null,
-    commentsCount: profile?.commentsCount ?? 0,
+    commentsCount,
   };
 }
 

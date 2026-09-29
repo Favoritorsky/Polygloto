@@ -6,7 +6,12 @@
 Если меняете поле здесь, меняйте его во всех трёх местах.
 
 Условные обозначения:
-- **server-only** — поле пишет только Cloud Function (Admin SDK) или админ через консоль; правила запрещают клиенту его создавать/менять.
+- **protected** — клиент задаёт поле только при создании документа или в строго описанном переходе, который проверяют правила; менять его иначе нельзя.
+
+Серверного кода нет (тариф Spark, без Cloud Functions): все записи делает
+клиент, а согласованность нескольких документов обеспечивают пакеты,
+транзакции и правила с `getAfter()`/`existsAfter()` — правило смотрит, каким
+будет соседний документ после той же записи.
 - `timestamp` — `serverTimestamp()`; правила требуют `== request.time`, где клиент пишет это поле.
 
 ## Общая идея: рабочая и опубликованная версия физически разделены
@@ -20,17 +25,22 @@ courses/{courseId}            ← рабочая версия (черновик)
   reactions/{reactionId}      ← эмодзи-реакции на уроки/комментарии
   ratings/{uid}               ← лайк/дизлайк курса
 
-publicCourses/{courseId}      ← опубликованный снимок. Пишет только Cloud Function moderateCourse.
+publicCourses/{courseId}      ← опубликованный снимок. Пишет браузер админа при одобрении.
   lessons/{lessonId}            Читают все.
   reference/{sectionId}
   dictionary/{wordId}
 
-catalogMeta/languages         ← список языков для фильтра каталога (пишет триггер)
+catalogMeta/languages         ← список языков для фильтра каталога (пишет админ при публикации)
 ```
 
-Когда админ одобряет курс, функция `moderateCourse` копирует рабочую версию
-(`courses/{id}` + подколлекции контента) в `publicCourses/{id}`, полностью
-заменяя прежний снимок. Пока новая версия на модерации, читатели видят старый
+Когда админ одобряет курс, его браузер (`approveCourse` в
+`src/services/moderationService.js`) собирает снимок функцией
+`shared/publicSnapshot.js` (очистка контента от лишних полей), пакетами по 400
+записей заменяет подколлекции `publicCourses/{id}`, а затем одной транзакцией
+записывает сам `publicCourses/{id}` (с `approvedAt == request.time`), переводит
+курс в `published` и обновляет `catalogMeta/languages`. Правила разрешают
+переход курса в `published` только админу и только если в той же записи
+появляется свежий `approvedAt`. Пока новая версия на модерации, читатели видят старый
 снимок — рабочие правки автора их не затрагивают. Так выполняется требование
 «черновик и опубликованная версия — физически разные документы» (в спецификации
 предлагалось поле `publishedSnapshot`; отдельная коллекция выбрана потому, что
@@ -44,21 +54,27 @@ catalogMeta/languages         ← список языков для фильтр�
 
 ## `users/{uid}`
 
-Создаётся Cloud Function `onUserCreated` (триггер Auth) при регистрации.
+Создаёт сам клиент сразу после регистрации (`createOwnProfile`; если запись не
+удалась, `AuthProvider` повторит её при следующем входе). Правила разрешают
+создать только свой документ с ровно этими полями, `role: "reader"` (или
+`"user"`, если в токене уже `email_verified`), `banned: false` и
+`createdAt == request.time`.
 Читается всеми (публичный профиль; email здесь **не** хранится).
 
 | Поле | Тип | Кто пишет | Описание |
 |---|---|---|---|
 | `displayName` | string, 2–40 | владелец | Отображаемое имя |
-| `photoURL` | string ≤1024 \| null | владелец | URL аватара только из своей папки Storage `avatars/{uid}/` |
+| `photoURL` | string ≤40000 \| null | владелец | Аватар как data URL `data:image/jpeg;base64,…` (Storage на Spark недоступен). Клиент ужимает картинку до 160×160 JPEG |
 | `bio` | string ≤500 | владелец | «О себе» |
-| `role` | `"reader"` \| `"user"` \| `"admin"` | **server-only** | `reader` при регистрации; `user` выставляет callable `syncRole` после подтверждения email; `admin` — только вручную в консоли Firebase |
-| `banned` | bool | **server-only** | Бан (callable `setUserBan`, только админ). Забаненный не может ничего писать |
-| `commentsCount` | number | **server-only** | Счётчик комментариев (для бейджа активности) |
-| `createdAt` | timestamp | **server-only** | |
+| `role` | `"reader"` \| `"user"` \| `"admin"` | **protected** | `reader` при регистрации; сам владелец может сменить `reader → user`, только если в токене `email_verified == true`; `admin` — только вручную в консоли Firebase |
+| `banned` | bool | **protected** | Бан. Меняет только админ (только это поле, не себе и не другому админу). Забаненный не может ничего писать |
+| `createdAt` | timestamp | **protected** (`== request.time` при создании) | |
 
-Статус подтверждения почты **не хранится** в базе: правила и функции берут его
-из `request.auth.token.email_verified` / `context.auth.token.email_verified`.
+Число комментариев пользователя (бейдж активности) не хранится: его считает
+агрегирующий `count()`-запрос по группе коллекций `comments` (`authorId == uid`).
+
+Статус подтверждения почты **не хранится** в базе: правила берут его
+из `request.auth.token.email_verified`.
 
 Роль `user` — это отражение факта подтверждения почты для UI и профиля.
 Правила, где важно подтверждение (отправка на модерацию), проверяют сам токен,
@@ -66,14 +82,19 @@ catalogMeta/languages         ← список языков для фильтр�
 
 ## `courses/{courseId}` — рабочая версия курса
 
-Создаётся **только** callable `createCourse` (rate limit: 1 курс в 30 с).
+Создаёт автор одним пакетом: курс (`status: "draft"`, пустые категории,
+не больше одного урока в `lessonOrder`), первый урок и отметку в `rateLimits`
+(не чаще 1 курса в 30 с — правило требует, чтобы отметка в той же записи
+была равна `request.time`). Нужна роль `user` или `admin`.
 Читают и пишут: автор (`authorId == request.auth.uid`) и админ.
-Удалить может автор или админ (триггер `onCourseDeleted` удаляет подколлекции
-и опубликованную копию).
+Удалить может автор или админ. Каскад выполняет клиент (`deleteCourse`):
+комментарии → реакции → подколлекции снимка → снимок → уроки, справочник,
+словарь → сам курс. Оценки (`ratings`) приватны и остаются «сиротами»,
+на работу сайта это не влияет.
 
 | Поле | Тип | Кто пишет | Описание |
 |---|---|---|---|
-| `authorId` | string (uid) | **server-only** (неизменяемо) | Автор |
+| `authorId` | string (uid) | **protected** (неизменяемо) | Автор |
 | `title` | string 3–120 | автор | Название |
 | `language` | string 2–60 | автор | Изучаемый язык (поиск/фильтр) |
 | `description` | string ≤2000 | автор | Описание |
@@ -81,10 +102,10 @@ catalogMeta/languages         ← список языков для фильтр�
 | `lessonOrder` | array of lessonId | автор | Порядок уроков |
 | `referenceOrder` | array of sectionId | автор | Порядок разделов справочника |
 | `status` | `"draft"` \| `"pending_review"` \| `"published"` \| `"rejected"` | автор — только разрешённые переходы, см. ниже | Статус **рабочей** версии |
-| `rejectionReason` | string \| null | **server-only** | Причина отклонения |
-| `hasPublishedVersion` | bool | **server-only** | Есть ли снимок в `publicCourses` |
+| `rejectionReason` | string \| null | **protected** (админ при отклонении, 5–2000 символов) | Причина отклонения |
+| `hasPublishedVersion` | bool | **protected** (админ при одобрении) | Есть ли снимок в `publicCourses` |
 | `submittedAt` | timestamp \| null | автор (вместе с переходом в `pending_review`) | |
-| `createdAt` | timestamp | **server-only** | |
+| `createdAt` | timestamp | **protected** (`== request.time`) | |
 | `updatedAt` | timestamp | автор (`== request.time`) | |
 
 ### Статусы и переходы
@@ -92,7 +113,7 @@ catalogMeta/languages         ← список языков для фильтр�
 | Из \ В | draft | pending_review | published | rejected |
 |---|---|---|---|---|
 | draft | — | автор (нужен `email_verified`) | — | — |
-| pending_review | автор (отозвать) | — | админ (функция) | админ (функция, причина обязательна) |
+| pending_review | автор (отозвать) | — | админ (нужен свежий снимок) | админ (причина обязательна) |
 | published | автор (начать правки) | — | — | — |
 | rejected | автор (начать исправления) | — | — | — |
 
@@ -127,14 +148,16 @@ catalogMeta/languages         ← список языков для фильтр�
 
 ### `courses/{courseId}/comments/{commentId}`
 
-Создаётся **только** callable `addComment` (rate limit: 1 комментарий в 15 с).
+Создаёт пользователь одним пакетом вместе с отметкой в `rateLimits`
+(не чаще 1 комментария в 15 с). Правила требуют `authorName` равным текущему
+`users/{uid}.displayName`, непустой текст без пробелов по краям,
+`createdAt == request.time` и незабаненного автора. Изменять комментарии нельзя.
 Читают все, если курс опубликован. Удалить может автор комментария, автор курса или админ.
 
 | Поле | Тип | Описание |
 |---|---|---|
 | `authorId` | string | |
 | `authorName` | string | Снимок displayName на момент написания |
-| `authorPhotoURL` | string \| null | |
 | `text` | string 1–2000 | Простой текст (рендерится как текст, не HTML) |
 | `createdAt` | timestamp | |
 
@@ -158,27 +181,38 @@ ID документа детерминирован — это и есть «од
 | `value` | `"like"` \| `"dislike"` | Один голос на пользователя, можно менять или удалить |
 | `updatedAt` | timestamp | |
 
-Триггер `onRatingWritten` пересчитывает `publicCourses/{id}.likesCount/dislikesCount`
-агрегирующим `count()`-запросом по подколлекции (клиент счётчики не трогает).
+Голос и счётчики `publicCourses/{id}.likesCount/dislikesCount/score` клиент
+меняет в одной транзакции (`setMyRating`, `increment`). Правило оценки
+(`countersMatch`) сверяет прежний голос с новым и требует, чтобы счётчики в
+той же записи изменились ровно на эту разницу, а `score` остался равен
+`likesCount − dislikesCount`. Голосовать за свой курс нельзя.
 
 ## `publicCourses/{courseId}` — опубликованный снимок
 
-Пишет **только** Cloud Functions. Читают все.
+Читают все. Пишут:
+- админ — снимок целиком при одобрении;
+- любой пользователь — только `likesCount`/`dislikesCount`/`score`, и только если в той же записи меняется его собственная оценка;
+- автор — только `authorName`, и только равным своему новому `displayName` (синхронизация при смене имени).
+
+Удалить может автор или админ.
 
 | Поле | Тип | Описание |
 |---|---|---|
 | `authorId` | string | |
-| `authorName` | string | Снимок имени автора на момент публикации |
+| `authorName` | string | Имя автора (обновляется при смене имени в профиле) |
 | `title`, `language`, `description`, `categories`, `lessonOrder`, `referenceOrder` | как в `courses` | Снимок одобренной версии |
 | `titleLower`, `languageLower` | string | `normalizeText(...)` — фильтр по языку |
 | `searchKeywords` | array of string | Префиксы слов названия и языка (`buildSearchKeywords`) для поиска |
-| `likesCount`, `dislikesCount` | number | Денормализованные агрегаты (пишет `onRatingWritten`) |
+| `likesCount`, `dislikesCount` | number | Денормализованные агрегаты (транзакция голосования) |
 | `score` | number | `likesCount − dislikesCount` — сортировка «по рейтингу» |
-| `commentsCount` | number | Счётчик комментариев (пишут `addComment` / `onCommentDeleted`) |
 | `toc` | map | `{ lessons: [{id, title}], reference: [{id, title}] }` — оглавление без загрузки разделов |
 | `lessonsCount`, `wordsCount` | number | Для витрины |
 | `publishedAt` | timestamp | Первая публикация |
 | `updatedAt` | timestamp | Последнее одобрение |
+| `approvedBy` | string (uid) | Кто одобрил |
+| `approvedAt` | timestamp | Время последнего одобрения; правила сверяют его с `request.time` при переходе курса в `published` |
+
+Число комментариев не хранится: страница курса считает его запросом `count()`.
 
 Подколлекции `lessons`, `reference`, `dictionary` — копии рабочих, те же поля.
 
@@ -193,14 +227,19 @@ ID документа детерминирован — это и есть «од
 
 ## `catalogMeta/languages`
 
-Список языков опубликованных курсов для фильтра каталога. Пишет только
-триггер `onPublicCourseWritten` (пересчёт `count()` по затронутым языкам),
-читают все.
+Список языков опубликованных курсов для фильтра каталога. Пишет только админ:
+при одобрении его браузер пересчитывает `count()` по языку курса. Читают все.
+Если автор удалит опубликованный курс, счётчик языка обновится при следующем
+одобрении курса на том же языке.
 `{ items: [{ key: languageLower, name: language, count }] }`, отсортировано по названию.
 
 ## `rateLimits/{uid}`
 
-Служебная коллекция; клиенту закрыта полностью.
+Отметки времени для ограничения частоты. Читает и пишет только владелец,
+удалять нельзя. Поле можно установить только в `request.time` и только если
+прежнее значение старше лимита (`createCourse` — 30 с, `addComment` — 15 с).
+Правила создания курса и комментария требуют, чтобы отметка менялась в той же
+записи, поэтому обойти лимит, не трогая `rateLimits`, нельзя.
 `{ createCourse: timestamp, addComment: timestamp }`
 
 ---
@@ -255,14 +294,10 @@ Firestore не поддерживает вложенные массивы, по�
 Ответы проверяются на клиенте: задания — учебные, результат нигде не
 засчитывается, поэтому доверять клиенту здесь безопасно.
 
-## Firebase Storage
+## Файлы
 
-`avatars/{uid}/{fileName}` — аватар. Читают все; создаёт, заменяет и удаляет
-только владелец. Правила (`storage.rules`): имя файла `[A-Za-z0-9_-]{1,64}.(jpg|jpeg|png|webp)`,
-тип `image/jpeg|png|webp` (SVG запрещён: он может содержать скрипты), размер
-от 1 байта до 2 МиБ. Клиент обрезает картинку до квадрата 256×256 и
-сохраняет JPEG (`src/services/avatarService.js`), старый файл удаляет после
-успешной смены. `users.photoURL` правила принимают только ссылкой на файл из
-собственной папки `avatars/{uid}/`. При удалении аккаунта `onUserDeleted`
-стирает папку.
-Зарезервировано для v2: `audio/{courseId}/…`.
+Firebase Storage не используется: на тарифе Spark новые бакеты недоступны.
+Аватар хранится прямо в `users/{uid}.photoURL` как data URL (160×160 JPEG,
+не больше 40 000 символов; правила принимают только `data:image/jpeg;base64,`).
+Клиент подбирает качество сжатия так, чтобы уложиться в лимит
+(`src/services/avatarService.js`).

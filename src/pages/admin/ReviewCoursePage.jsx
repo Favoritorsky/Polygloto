@@ -10,6 +10,7 @@ import Button from '../../components/ui/Button.jsx';
 import Field from '../../components/ui/Field.jsx';
 import Tabs from '../../components/ui/Tabs.jsx';
 import { buildDictionaryIndex } from '../../content/dictionaryIndex.js';
+import { useAuth } from '../../hooks/useAuth.js';
 import { useAsync, useSubscription } from '../../hooks/useSubscription.js';
 import { subscribeToCourse } from '../../services/courseService.js';
 import { toUserMessage } from '../../services/errors.js';
@@ -38,6 +39,7 @@ function Sections({ sections, categories, courseId, dictionary, emptyText }) {
 export default function ReviewCoursePage() {
   const { courseId } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [tab, setTab] = useState('lessons');
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState('');
@@ -58,7 +60,7 @@ export default function ReviewCoursePage() {
     }
     setBusy(kind);
     try {
-      if (kind === 'approve') await approveCourse(courseId);
+      if (kind === 'approve') await approveCourse(courseId, user.uid);
       else await rejectCourse(courseId, reason.trim());
       navigate('/admin', { replace: true });
     } catch (err) {

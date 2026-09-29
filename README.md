@@ -4,23 +4,27 @@
 конлангов) прямо в браузере: уроки со встроенными заданиями, справочник и словарь.
 
 Стек: React 19 + Vite, React Router, CSS Modules, Firebase (Cloud Firestore,
-Authentication, Cloud Functions v2, Storage), редактор на Slate.
+Authentication), редактор на Slate.
+
+Проект рассчитан на **бесплатный тариф Spark**: Cloud Functions и Cloud Storage
+не используются. Всё, что обычно делает сервер (защита ролей, переходы статусов
+модерации, счётчики лайков, ограничение частоты), проверяют Firestore Security
+Rules, а записи выполняет клиент пакетами и транзакциями. Подробности —
+в [docs/security.md](docs/security.md).
 
 ## Структура
 
 ```
 docs/data-model.md    — схема всех коллекций Firestore (источник правды)
-shared/schema.js      — константы схемы (коллекции, статусы, лимиты) для клиента и функций
+shared/schema.js      — константы схемы (коллекции, статусы, лимиты)
+shared/publicSnapshot.js — сборка публичного снимка курса при публикации
 src/services/         — весь доступ к Firebase (компоненты не вызывают SDK напрямую)
 src/components/       — React-компоненты (каждый со своим *.module.css)
 src/pages/            — страницы (маршруты)
-functions/            — Cloud Functions, по файлу на функцию, экспорт из index.js
-firestore.rules       — Security Rules Firestore
-storage.rules         — Security Rules Storage
+firestore.rules       — Security Rules Firestore (единственная серверная защита)
 tests/rules/          — тесты правил (эмулятор)
-tests/functions/      — интеграционные тесты функций (эмулятор)
 tests/e2e/            — сквозные сценарии в браузере (Playwright), по файлу на этап
-docs/security.md      — модель угроз, итоговый аудит и чек-лист перед запуском
+docs/security.md      — модель угроз, остаточные риски и чек-лист перед запуском
 docs/stage-reports.md — отчёты по этапам разработки
 ```
 
@@ -30,38 +34,44 @@ docs/stage-reports.md — отчёты по этапам разработки
 
 ```bash
 npm install
-npm --prefix functions install
 npm install -g firebase-tools
-npm run emulators      # Auth, Firestore, Functions, Storage
+npm run emulators      # Auth + Firestore (проект demo-polygloto)
 npm run dev:emu        # в другом терминале; фронтенд на http://localhost:5173
 ```
 
 Письма подтверждения и сброса пароля в эмуляторе не отправляются: ссылки
 печатаются в логе эмулятора Auth.
 
-## Подключение боевого проекта Firebase
+## Подключение боевого проекта Firebase (тариф Spark)
 
 1. `cp .env.example .env.local` и заполните `VITE_FIREBASE_*` из консоли Firebase
    (Project settings → Your apps → Web app). Файл `.env.local` не коммитится.
-2. В `.firebaserc` замените `demo-polygloto` на ID вашего проекта (или `firebase use --add`).
-3. В консоли включите: Authentication → Email/Password; Firestore (Native mode); Storage.
-   Cloud Functions требуют тарифа Blaze.
-4. `firebase deploy` — правила, индексы, функции и хостинг.
-5. Пройдите чек-лист «Перед запуском» в [docs/security.md](docs/security.md)
-   (App Check, защита от перебора email, ограничения API-ключа, бюджет).
+2. `.firebaserc` уже указывает на проект `selfi-a04df` (для другого проекта:
+   `firebase use --add`).
+3. В консоли Firebase включите:
+   - Authentication → Sign-in method → Email/Password;
+   - Firestore Database → Create database (Native mode, регион по вкусу).
+   Storage, Functions и Realtime Database не нужны.
+4. `firebase login`, затем
+   `firebase deploy --only firestore:rules,firestore:indexes,hosting`
+   (перед деплоем хостинга выполните `npm run build`).
+5. Добавьте домен хостинга в Authentication → Settings → Authorized domains,
+   если его там нет.
+6. Пройдите чек-лист «Перед запуском» в [docs/security.md](docs/security.md).
 
 ## Как назначить администратора
 
-Роль `admin` выдаётся только вручную: Firebase Console → Firestore →
-`users/{uid}` → поле `role` → `"admin"`. Клиент изменить роль не может
-(это проверяют тесты правил).
+Роль `admin` выдаётся только вручную: зарегистрируйтесь на сайте, затем
+Firebase Console → Firestore → `users/{uid}` → поле `role` → `"admin"`.
+Клиент изменить роль на admin не может (это проверяют тесты правил).
+Админ публикует курсы из своего браузера, поэтому давайте роль только
+доверенным людям.
 
 ## Тесты
 
 ```bash
 npm test                 # юнит-тесты логики
-npm run test:rules       # Security Rules (эмулятор Firestore + Storage)
-npm run test:functions   # Cloud Functions (эмуляторы Auth + Firestore + Functions)
+npm run test:rules       # Security Rules (сам поднимает эмулятор Firestore)
 npm run test:e2e         # браузерные сценарии: нужны запущенные `npm run emulators` и `npm run dev:emu`
 npm run lint
 ```

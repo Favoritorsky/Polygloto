@@ -1,18 +1,45 @@
-/** Комментарии к опубликованному курсу. Создание — через Cloud Function (rate limit). */
-import { collection, deleteDoc, doc, limit, onSnapshot, orderBy, query } from 'firebase/firestore';
-import { httpsCallable } from 'firebase/functions';
-import { CALLABLES, COLLECTIONS, LIMITS, SUBCOLLECTIONS } from '../../shared/schema.js';
-import { db, functions } from './firebase.js';
+/**
+ * Комментарии к опубликованному курсу. Комментарий создаётся одной пакетной
+ * записью с отметкой rateLimits.addComment — правила пропускают не чаще раза
+ * в 15 с и сверяют имя автора с его профилем.
+ */
+import {
+  collection,
+  collectionGroup,
+  deleteDoc,
+  doc,
+  getCountFromServer,
+  limit,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+  where,
+  writeBatch,
+} from 'firebase/firestore';
+import { COLLECTIONS, LIMITS, RATE_LIMITS, SUBCOLLECTIONS } from '../../shared/schema.js';
+import { deleteAllDocs } from './batchUtils.js';
+import { db } from './firebase.js';
+import { stampRateLimit, withRateLimit } from './rateLimit.js';
 
 export const COMMENTS_PAGE = 30;
 
+const commentsCol = (courseId) => collection(db, COLLECTIONS.COURSES, courseId, SUBCOLLECTIONS.COMMENTS);
+
 export function subscribeToComments(courseId, count, onData, onError) {
-  const q = query(
-    collection(db, COLLECTIONS.COURSES, courseId, SUBCOLLECTIONS.COMMENTS),
-    orderBy('createdAt', 'desc'),
-    limit(count),
-  );
+  const q = query(commentsCol(courseId), orderBy('createdAt', 'desc'), limit(count));
   return onSnapshot(q, (snap) => onData(snap.docs.map((d) => ({ id: d.id, ...d.data() }))), onError);
+}
+
+/** Число комментариев курса (агрегирующий запрос, один «read» на 1000 документов). */
+export async function countComments(courseId) {
+  return (await getCountFromServer(commentsCol(courseId))).data().count;
+}
+
+/** Сколько комментариев написал пользователь (для бейджа «Собеседник»). */
+export async function countUserComments(uid) {
+  const q = query(collectionGroup(db, SUBCOLLECTIONS.COMMENTS), where('authorId', '==', uid));
+  return (await getCountFromServer(q)).data().count;
 }
 
 export function validateComment(text) {
@@ -22,10 +49,25 @@ export function validateComment(text) {
   return null;
 }
 
-export function addComment(courseId, text) {
-  return httpsCallable(functions, CALLABLES.ADD_COMMENT)({ courseId, text: text.trim() });
+/** author: { uid, displayName } — имя должно совпадать с профилем (проверяют правила). */
+export async function addComment(courseId, author, text) {
+  const ref = doc(commentsCol(courseId));
+  const batch = writeBatch(db);
+  batch.set(ref, { authorId: author.uid, authorName: author.displayName, text: text.trim(), createdAt: serverTimestamp() });
+  stampRateLimit(batch, author.uid, 'addComment');
+  await withRateLimit(author.uid, 'addComment', RATE_LIMITS.ADD_COMMENT_SECONDS, () => batch.commit());
+  return ref.id;
 }
 
-export function deleteComment(courseId, commentId) {
-  return deleteDoc(doc(db, COLLECTIONS.COURSES, courseId, SUBCOLLECTIONS.COMMENTS, commentId));
+/** Удаляет комментарий и реакции на него (правила разрешают убрать реакции удалённого комментария). */
+export async function deleteComment(courseId, commentId) {
+  await deleteDoc(doc(commentsCol(courseId), commentId));
+  const reactions = query(
+    collection(db, COLLECTIONS.COURSES, courseId, SUBCOLLECTIONS.REACTIONS),
+    where('targetType', '==', 'comment'),
+    where('targetId', '==', commentId),
+  );
+  await deleteAllDocs(reactions).catch(() => {
+    // Уборка реакций не критична: без комментария они нигде не показываются.
+  });
 }

@@ -3,11 +3,13 @@ import { LIMITS } from '../../../shared/schema.js';
 import Alert from '../ui/Alert.jsx';
 import Button from '../ui/Button.jsx';
 import Field from '../ui/Field.jsx';
+import { useAuth } from '../../hooks/useAuth.js';
 import { createCourse, validateCourseMeta } from '../../services/courseService.js';
 import { toUserMessage } from '../../services/errors.js';
 import styles from './CreateCourseForm.module.css';
 
 export default function CreateCourseForm({ onCreated, onCancel }) {
+  const { user } = useAuth();
   const [form, setForm] = useState({ title: '', language: '', description: '' });
   const [errors, setErrors] = useState({});
   const [submitting, setSubmitting] = useState(false);
@@ -24,7 +26,7 @@ export default function CreateCourseForm({ onCreated, onCancel }) {
     setSubmitting(true);
     setError('');
     try {
-      const courseId = await createCourse(form);
+      const courseId = await createCourse(user.uid, form);
       onCreated(courseId);
     } catch (err) {
       setError(toUserMessage(err));
