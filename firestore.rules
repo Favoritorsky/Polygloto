@@ -78,6 +78,93 @@ service cloud.firestore {
         && validPhotoURL(request.resource.data.photoURL);
     }
 
+    // ---------- courses/{courseId} — рабочая версия ----------
+    // Создаёт только Cloud Function createCourse (rate limit, серверные поля).
+    // Черновики и вообще рабочую версию видит только автор и админ;
+    // читатели видят опубликованный снимок в publicCourses.
+
+    function courseData(courseId) {
+      return get(/databases/$(database)/documents/courses/$(courseId)).data;
+    }
+
+    function canManageCourse(data) {
+      return signedIn() && (data.authorId == request.auth.uid || isAdmin());
+    }
+
+    function validCourseMeta(d) {
+      return isStringOfLength(d.title, 3, 120)
+        && isStringOfLength(d.language, 2, 60)
+        && isStringOfLength(d.description, 0, 2000)
+        && d.categories is list && d.categories.size() <= 20
+        && d.lessonOrder is list && d.lessonOrder.size() <= 200
+        && d.referenceOrder is list && d.referenceOrder.size() <= 200;
+    }
+
+    // Правка контента: только в статусе draft (в pending_review контент заморожен,
+    // чтобы админ одобрял ровно ту версию, которую видел).
+    function isContentEdit() {
+      return resource.data.status == 'draft'
+        && request.resource.data.status == 'draft'
+        && onlyChanges(['title', 'language', 'description', 'categories',
+                        'lessonOrder', 'referenceOrder', 'updatedAt'])
+        && request.resource.data.updatedAt == request.time
+        && validCourseMeta(request.resource.data);
+    }
+
+    // Разрешённые клиенту переходы статуса (см. AUTHOR_STATUS_TRANSITIONS в shared/schema.js).
+    // published / rejected ставит только Cloud Function moderateCourse.
+    function isStatusChange() {
+      let from = resource.data.status;
+      let to = request.resource.data.status;
+      return request.resource.data.updatedAt == request.time
+        && (
+          (from == 'draft' && to == 'pending_review'
+            && emailVerified()
+            && validCourseMeta(request.resource.data)
+            && request.resource.data.submittedAt == request.time
+            && onlyChanges(['status', 'updatedAt', 'submittedAt']))
+          || (from in ['pending_review', 'published', 'rejected'] && to == 'draft'
+            && onlyChanges(['status', 'updatedAt']))
+        );
+    }
+
+    match /courses/{courseId} {
+      allow get: if canManageCourse(resource.data);
+      // Запрос обязан фильтровать по authorId == своему uid (или быть от админа).
+      allow list: if signedIn() && (resource.data.authorId == request.auth.uid || isAdmin());
+
+      allow create: if false;
+      allow update: if canManageCourse(resource.data)
+        && isActiveUser()
+        && (isContentEdit() || isStatusChange());
+      allow delete: if canManageCourse(resource.data) && isActiveUser();
+
+      // Контент рабочей версии: уроки и справочник.
+      function validSection(d) {
+        return d.keys().hasOnly(['title', 'blocks', 'updatedAt'])
+          && isStringOfLength(d.title, 0, 120)
+          && d.blocks is list && d.blocks.size() <= 400
+          && d.updatedAt == request.time;
+      }
+
+      function canWriteContent() {
+        let course = courseData(courseId);
+        return canManageCourse(course) && isActiveUser() && course.status == 'draft';
+      }
+
+      match /lessons/{lessonId} {
+        allow read: if canManageCourse(courseData(courseId));
+        allow create, update: if canWriteContent() && validSection(request.resource.data);
+        allow delete: if canWriteContent();
+      }
+
+      match /reference/{sectionId} {
+        allow read: if canManageCourse(courseData(courseId));
+        allow create, update: if canWriteContent() && validSection(request.resource.data);
+        allow delete: if canWriteContent();
+      }
+    }
+
     // ---------- rateLimits/{uid} ----------
     // Служебная коллекция Cloud Functions — клиенту закрыта.
     match /rateLimits/{uid} {

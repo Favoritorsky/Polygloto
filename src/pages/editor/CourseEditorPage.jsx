@@ -1,0 +1,135 @@
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useParams } from 'react-router-dom';
+import { COURSE_STATUS } from '../../../shared/schema.js';
+import StatusBadge from '../../components/course/StatusBadge.jsx';
+import Alert from '../../components/ui/Alert.jsx';
+import AsyncState from '../../components/ui/AsyncState.jsx';
+import Button from '../../components/ui/Button.jsx';
+import Tabs from '../../components/ui/Tabs.jsx';
+import { useAuth } from '../../hooks/useAuth.js';
+import { useSubscription } from '../../hooks/useSubscription.js';
+import { returnToDraft, subscribeToCourse } from '../../services/courseService.js';
+import { toUserMessage } from '../../services/errors.js';
+import { CourseEditorContext } from './courseEditorContext.js';
+import DictionaryTab from './DictionaryTab.jsx';
+import SectionsTab from './SectionsTab.jsx';
+import SettingsTab from './SettingsTab.jsx';
+import StatusPanel from './StatusPanel.jsx';
+import styles from './CourseEditorPage.module.css';
+
+const TABS = [
+  { id: 'lessons', label: 'Самоучитель' },
+  { id: 'reference', label: 'Справочник' },
+  { id: 'dictionary', label: 'Словарь' },
+  { id: 'settings', label: 'Настройки курса' },
+];
+
+export default function CourseEditorPage() {
+  const { courseId } = useParams();
+  const { isBanned } = useAuth();
+  const [tab, setTab] = useState('lessons');
+  const [withdrawing, setWithdrawing] = useState(false);
+  const [actionError, setActionError] = useState('');
+  const { data: course, loading, error, retry } = useSubscription(
+    (onData, onError) => subscribeToCourse(courseId, onData, onError),
+    courseId,
+  );
+
+  // Актуальный статус для ensureDraft (подписка обновляет его асинхронно).
+  const statusRef = useRef(null);
+  const courseStatus = course?.status ?? null;
+  useEffect(() => {
+    statusRef.current = courseStatus;
+  }, [courseStatus]);
+  const draftPromise = useRef(null);
+
+  const ensureDraft = useCallback(async () => {
+    const status = statusRef.current;
+    if (status === COURSE_STATUS.DRAFT) return;
+    if (status === COURSE_STATUS.PENDING_REVIEW) {
+      throw Object.assign(new Error('Курс на проверке'), { userMessage: 'Курс на проверке: отзовите его, чтобы править.' });
+    }
+    // Одна смена статуса на несколько одновременных сохранений.
+    if (!draftPromise.current) {
+      draftPromise.current = returnToDraft(courseId)
+        .then(() => {
+          statusRef.current = COURSE_STATUS.DRAFT;
+        })
+        .finally(() => {
+          draftPromise.current = null;
+        });
+    }
+    await draftPromise.current;
+  }, [courseId]);
+
+  const readOnly = isBanned || course?.status === COURSE_STATUS.PENDING_REVIEW;
+  const contextValue = useMemo(
+    () => (course ? { course, courseId, readOnly, ensureDraft } : null),
+    [course, courseId, readOnly, ensureDraft],
+  );
+
+  async function handleWithdraw() {
+    setWithdrawing(true);
+    setActionError('');
+    try {
+      await returnToDraft(courseId);
+    } catch (err) {
+      setActionError(toUserMessage(err));
+    } finally {
+      setWithdrawing(false);
+    }
+  }
+
+  const notFound = !loading && !error && course === null;
+  const denied = error?.code === 'permission-denied';
+
+  return (
+    <AsyncState loading={loading} error={denied || notFound ? null : error} onRetry={retry}>
+      {denied || notFound ? (
+        <Alert tone="error" title="Курс недоступен">
+          Курс не найден или у вас нет прав на его редактирование. <Link to="/my-courses">К моим курсам</Link>
+        </Alert>
+      ) : (
+        course && (
+          <CourseEditorContext.Provider value={contextValue}>
+            <div className={styles.header}>
+              <div>
+                <Link to="/my-courses" className={styles.back}>
+                  ← Мои курсы
+                </Link>
+                <h1 className={styles.title}>{course.title}</h1>
+                <div className={styles.meta}>
+                  <StatusBadge status={course.status} />
+                  <span>{course.language}</span>
+                </div>
+              </div>
+            </div>
+
+            <StatusPanel />
+            {course.status === COURSE_STATUS.PENDING_REVIEW && (
+              <Alert
+                tone="warning"
+                title="Курс на проверке"
+                action={
+                  <Button size="sm" variant="secondary" onClick={handleWithdraw} loading={withdrawing}>
+                    Отозвать и редактировать
+                  </Button>
+                }
+              >
+                Пока идёт модерация, правки недоступны — так администратор проверяет именно ту версию, которую вы
+                отправили.
+              </Alert>
+            )}
+            {actionError && <Alert tone="error">{actionError}</Alert>}
+
+            <Tabs tabs={TABS} active={tab} onChange={setTab} label="Разделы курса" />
+            {tab === 'lessons' && <SectionsTab kind="lessons" key="lessons" />}
+            {tab === 'reference' && <SectionsTab kind="reference" key="reference" />}
+            {tab === 'dictionary' && <DictionaryTab />}
+            {tab === 'settings' && <SettingsTab />}
+          </CourseEditorContext.Provider>
+        )
+      )}
+    </AsyncState>
+  );
+}

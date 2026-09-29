@@ -1,0 +1,21 @@
+.indicator {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+}
+
+.saved {
+  color: var(--color-success);
+}
+
+.error {
+  color: var(--color-danger);
+}
+
+.retry {
+  border: none;
+  background: none;
+  color: var(--color-primary);
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 0;
+}

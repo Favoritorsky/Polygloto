@@ -1,0 +1,31 @@
+.dialog {
+  border: none;
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+  width: min(560px, calc(100vw - 2rem));
+  box-shadow: var(--shadow-md);
+}
+
+.dialog::backdrop {
+  background: rgb(0 0 0 / 0.35);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.header h2 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.close {
+  border: none;
+  background: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  line-height: 1;
+}
