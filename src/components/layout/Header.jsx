@@ -1,4 +1,5 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom';
+import Avatar from '../profile/Avatar.jsx';
 import Button from '../ui/Button.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
 import { logout } from '../../services/authService.js';
@@ -49,8 +50,9 @@ export default function Header() {
           )}
           {user && (
             <>
-              <NavLink to="/account" className={styles.userLink}>
-                {profile?.displayName ?? user.email}
+              <NavLink to={`/users/${user.uid}`} className={styles.userLink} title="Мой профиль">
+                <Avatar name={profile?.displayName ?? user.email} url={profile?.photoURL} seed={user.uid} size={28} />
+                <span>{profile?.displayName ?? user.email}</span>
               </NavLink>
               <Button variant="ghost" size="sm" onClick={handleLogout}>
                 Выйти

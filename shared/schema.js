@@ -121,6 +121,8 @@ export const LIMITS = Object.freeze({
   REJECTION_REASON_MAX: 2000,
 
   AVATAR_MAX_BYTES: 2 * 1024 * 1024,
+  AVATAR_SIZE_PX: 256,
+  AVATAR_SOURCE_MAX_BYTES: 15 * 1024 * 1024,
 });
 
 /** Rate limiting (секунды между действиями одного пользователя). */

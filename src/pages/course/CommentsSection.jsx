@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LIMITS } from '../../../shared/schema.js';
+import Avatar from '../../components/profile/Avatar.jsx';
 import ReactionBar from '../../components/reactions/ReactionBar.jsx';
 import Alert from '../../components/ui/Alert.jsx';
 import AsyncState from '../../components/ui/AsyncState.jsx';
@@ -124,6 +125,7 @@ export default function CommentsSection() {
           {comments.data?.map((comment) => (
             <li key={comment.id} className={styles.comment}>
               <div className={styles.head}>
+                <Avatar name={comment.authorName} url={comment.authorPhotoURL} seed={comment.authorId} size={28} />
                 <Link to={`/users/${comment.authorId}`} className={styles.author}>
                   {comment.authorName}
                 </Link>

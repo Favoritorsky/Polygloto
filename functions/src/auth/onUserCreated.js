@@ -2,7 +2,7 @@
 // Auth-триггеры onCreate есть только в API v1.
 import * as functionsV1 from 'firebase-functions/v1';
 import { COLLECTIONS, ROLES } from '../../shared/schema.js';
-import { db, FieldValue } from '../admin.js';
+import { bucket, db, FieldValue } from '../admin.js';
 import { REGION } from '../config.js';
 
 /** Имя по умолчанию. Email не используем — он не должен стать публичным. */
@@ -38,5 +38,7 @@ export const onUserDeleted = functionsV1
     await Promise.all([
       db.collection(COLLECTIONS.USERS).doc(user.uid).delete(),
       db.collection(COLLECTIONS.RATE_LIMITS).doc(user.uid).delete(),
+      // Аватары удалённого аккаунта не должны оставаться публичными.
+      bucket().deleteFiles({ prefix: `avatars/${user.uid}/` }),
     ]);
   });

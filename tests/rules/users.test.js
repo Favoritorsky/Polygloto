@@ -52,7 +52,7 @@ describe('users: обновление', () => {
       updateDoc(doc(as(env, 'alice'), 'users/alice'), {
         displayName: 'Алиса',
         bio: 'Пишу курс по токипоне',
-        photoURL: 'https://firebasestorage.googleapis.com/v0/b/x/o/avatars%2Falice%2Fa.png',
+        photoURL: 'https://firebasestorage.googleapis.com/v0/b/x/o/avatars%2Falice%2Fa.png?alt=media',
       }),
     );
   });
@@ -107,6 +107,19 @@ describe('users: обновление', () => {
     await assertFails(updateDoc(ref, { photoURL: 'javascript:alert(1)' }));
     await assertFails(updateDoc(ref, { photoURL: 'https://evil.example.com/pixel.gif' }));
     await assertSucceeds(updateDoc(ref, { photoURL: null }));
+  });
+
+  it('аватар — только из своей папки avatars/{uid}/', async () => {
+    const ref = doc(as(env, 'alice'), 'users/alice');
+    const own = 'https://firebasestorage.googleapis.com/v0/b/demo.appspot.com/o/avatars%2Falice%2F17000.jpg?alt=media&token=abc';
+    await assertSucceeds(updateDoc(ref, { photoURL: own }));
+    await assertSucceeds(updateDoc(ref, { photoURL: 'http://127.0.0.1:9199/v0/b/demo/o/avatars%2Falice%2Fa.webp?alt=media' }));
+    // Чужой файл, другой путь, попытка выйти из папки, похожий домен.
+    await assertFails(updateDoc(ref, { photoURL: own.replace('alice', 'bob') }));
+    await assertFails(updateDoc(ref, { photoURL: 'https://firebasestorage.googleapis.com/v0/b/x/o/courses%2Fa.png' }));
+    await assertFails(updateDoc(ref, { photoURL: 'https://firebasestorage.googleapis.com/v0/b/x/o/avatars%2Falice%2F..%2Fbob%2Fa.png' }));
+    await assertFails(updateDoc(ref, { photoURL: 'https://firebasestorage.googleapis.com.evil.io/v0/b/x/o/avatars%2Falice%2Fa.png' }));
+    await assertFails(updateDoc(ref, { photoURL: 'https://firebasestorage.googleapis.com/v0/b/x/o/avatars%2Falicex%2Fa.png' }));
   });
 });
 

@@ -1,0 +1,180 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+}
+
+.head {
+  display: flex;
+  gap: 1.5rem;
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.identity {
+  flex: 1 1 280px;
+  min-width: 0;
+}
+
+.name {
+  margin: 0 0 0.25rem;
+  overflow-wrap: anywhere;
+}
+
+.bio {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  margin: 0.75rem 0 0;
+}
+
+.muted,
+.hint {
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.hint {
+  font-size: 0.85rem;
+}
+
+.ownActions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.accountLink {
+  font-size: 0.9rem;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 0.75rem;
+}
+
+.stats > div {
+  display: flex;
+  flex-direction: column;
+  padding: 1rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+}
+
+.stats strong {
+  font-size: 1.6rem;
+  font-family: var(--font-display);
+}
+
+.stats span {
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+}
+
+.sectionTitle {
+  font-size: 1.3rem;
+}
+
+.badges {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.badge {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 0.9rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-primary);
+  border-radius: var(--radius-md);
+}
+
+.badge > span:last-child {
+  display: flex;
+  flex-direction: column;
+}
+
+.locked {
+  border-style: dashed;
+  border-color: var(--color-border);
+  opacity: 0.65;
+}
+
+.locked .badgeIcon {
+  filter: grayscale(1);
+}
+
+.badgeIcon {
+  font-size: 1.6rem;
+}
+
+.badgeHint {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 1rem;
+}
+
+.grid > li {
+  display: flex;
+}
+
+.grid > li > * {
+  flex: 1;
+}
+
+.missing {
+  text-align: center;
+  padding: 3rem 1rem;
+}
+
+.editForm {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 560px;
+}
+
+.avatarEdit {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.avatarActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.avatarActions .hint {
+  flex-basis: 100%;
+}
+
+.formActions {
+  display: flex;
+  gap: 0.5rem;
+}

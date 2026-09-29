@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import VerifyEmailNotice from '../../components/auth/VerifyEmailNotice.jsx';
 import Alert from '../../components/ui/Alert.jsx';
 import Button from '../../components/ui/Button.jsx';
@@ -102,6 +102,9 @@ export default function AccountPage() {
           <dt>Роль</dt>
           <dd>{profileLoading ? '…' : ROLE_LABELS[profile?.role] ?? '—'}</dd>
         </dl>
+        <p>
+          Имя, фото и «о себе» меняются на странице <Link to={`/users/${user.uid}`}>вашего профиля</Link>.
+        </p>
       </section>
 
       <section className={styles.section}>

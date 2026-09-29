@@ -50,7 +50,7 @@ catalogMeta/languages         ← список языков для фильтр�
 | Поле | Тип | Кто пишет | Описание |
 |---|---|---|---|
 | `displayName` | string, 2–40 | владелец | Отображаемое имя |
-| `photoURL` | string ≤1024 \| null | владелец | URL аватара из Storage (`avatars/{uid}/…`) |
+| `photoURL` | string ≤1024 \| null | владелец | URL аватара только из своей папки Storage `avatars/{uid}/` |
 | `bio` | string ≤500 | владелец | «О себе» |
 | `role` | `"reader"` \| `"user"` \| `"admin"` | **server-only** | `reader` при регистрации; `user` выставляет callable `syncRole` после подтверждения email; `admin` — только вручную в консоли Firebase |
 | `banned` | bool | **server-only** | Бан (callable `setUserBan`, только админ). Забаненный не может ничего писать |
@@ -257,5 +257,12 @@ Firestore не поддерживает вложенные массивы, по�
 
 ## Firebase Storage
 
-`avatars/{uid}/{fileName}` — изображение ≤ 2 МиБ, пишет только владелец, читают все.
+`avatars/{uid}/{fileName}` — аватар. Читают все; создаёт, заменяет и удаляет
+только владелец. Правила (`storage.rules`): имя файла `[A-Za-z0-9_-]{1,64}.(jpg|jpeg|png|webp)`,
+тип `image/jpeg|png|webp` (SVG запрещён: он может содержать скрипты), размер
+от 1 байта до 2 МиБ. Клиент обрезает картинку до квадрата 256×256 и
+сохраняет JPEG (`src/services/avatarService.js`), старый файл удаляет после
+успешной смены. `users.photoURL` правила принимают только ссылкой на файл из
+собственной папки `avatars/{uid}/`. При удалении аккаунта `onUserDeleted`
+стирает папку.
 Зарезервировано для v2: `audio/{courseId}/…`.
