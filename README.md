@@ -45,9 +45,12 @@ npm run dev:emu        # в другом терминале; фронтенд н
 ## Автоматический деплой (GitHub Actions)
 
 Каждый пуш в `main` проверяется (lint, юнит-тесты, тесты правил, сборка) и
-выкладывается на https://selfi-a04df.web.app: правила Firestore, индексы и
-сайт. Веб-конфиг берётся из проекта Firebase во время деплоя, в репозитории
-его нет. Workflow: `.github/workflows/deploy.yml`.
+выкладывается на https://selfi-a04df.web.app: правила Firestore и сайт.
+Веб-конфиг берётся из проекта Firebase во время деплоя, в репозитории его
+нет. Workflow: `.github/workflows/deploy.yml`, деплой —
+`scripts/deploy-firebase.mjs` (REST API: ключу Admin SDK не хватает прав на
+`firebase deploy`). Составные индексы не нужны: запросы, которым они
+понадобились бы, досортировываются на клиенте.
 
 Нужны два секрета репозитория (Settings → Secrets and variables → Actions):
 

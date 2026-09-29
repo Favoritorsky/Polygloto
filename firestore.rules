@@ -331,6 +331,10 @@ service cloud.firestore {
       // Комментарий создаётся одной записью с отметкой rateLimits.addComment (не чаще раза в 15 с).
       // Имя автора копируется из профиля — подделать нельзя.
       match /comments/{commentId} {
+        function commentAuthorPath() {
+          return /databases/$(database)/documents/commentAuthors/$(commentId);
+        }
+
         allow read: if isPublished();
         allow create: if isActiveUser()
           && isPublished()
@@ -340,9 +344,10 @@ service cloud.firestore {
           && isStringOfLength(request.resource.data.text, 1, 2000)
           && request.resource.data.text == request.resource.data.text.trim()
           && request.resource.data.createdAt == request.time
-          && rateLimitAfter('addComment');
+          && rateLimitAfter('addComment')
+          && existsAfter(commentAuthorPath());
         allow update: if false;
-        allow delete: if signedIn() && (
+        allow delete: if signedIn() && !existsAfter(commentAuthorPath()) && (
           resource.data.authorId == request.auth.uid
           || (isPublished() && publicCourse().authorId == request.auth.uid)
           || isCourseOwner()
@@ -450,10 +455,28 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Счётчик комментариев пользователя считается запросом count() по группе
-    // коллекций comments (бейдж «Собеседник»).
-    match /{path=**}/comments/{commentId} {
-      allow list: if true;
+    // ---------- commentAuthors/{commentId} ----------
+    // Кто написал комментарий: { authorId, courseId }. Нужна для подсчёта
+    // комментариев пользователя (бейдж «Собеседник») запросом count() по
+    // authorId — запрос по группе коллекций comments потребовал бы индекс,
+    // который ключ деплоя создать не может. Создаётся и удаляется в одной
+    // записи с самим комментарием (это требует и правило комментария).
+    match /commentAuthors/{commentId} {
+      function commentPath(courseId) {
+        return /databases/$(database)/documents/courses/$(courseId)/comments/$(commentId);
+      }
+
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['authorId', 'courseId'])
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.courseId is string
+        && !exists(commentPath(request.resource.data.courseId))
+        && existsAfter(commentPath(request.resource.data.courseId))
+        && getAfter(commentPath(request.resource.data.courseId)).data.authorId == request.auth.uid;
+      allow update: if false;
+      // Убрать можно только вместе с комментарием (или если его уже нет).
+      allow delete: if signedIn() && !existsAfter(commentPath(resource.data.courseId));
     }
   }
 }

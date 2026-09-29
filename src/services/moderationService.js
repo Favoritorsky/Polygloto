@@ -29,13 +29,19 @@ import { BATCH_SIZE } from './batchUtils.js';
 import { UserFacingError } from './errors.js';
 import { db } from './firebase.js';
 
+const millis = (value) => value?.toMillis?.() ?? 0;
+
+/** Очередь проверки, старые заявки первыми (сортировка на клиенте — без составного индекса). */
 export function subscribeToReviewQueue(onData, onError) {
-  const q = query(
-    collection(db, COLLECTIONS.COURSES),
-    where('status', '==', COURSE_STATUS.PENDING_REVIEW),
-    orderBy('submittedAt', 'asc'),
+  const q = query(collection(db, COLLECTIONS.COURSES), where('status', '==', COURSE_STATUS.PENDING_REVIEW));
+  return onSnapshot(
+    q,
+    (snap) => {
+      const courses = snap.docs.map((d) => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) }));
+      onData(courses.sort((a, b) => millis(a.submittedAt) - millis(b.submittedAt)));
+    },
+    onError,
   );
-  return onSnapshot(q, (snap) => onData(snap.docs.map((d) => ({ id: d.id, ...d.data() }))), onError);
 }
 
 export function subscribeToAllCourses(onData, onError) {

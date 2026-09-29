@@ -4,12 +4,17 @@ import { db } from './firebase.js';
 
 export const BATCH_SIZE = 400;
 
-/** Удаляет все документы коллекции (или запроса) порциями. */
-export async function deleteAllDocs(collectionOrQuery) {
+/**
+ * Удаляет все документы коллекции (или запроса) порциями. deleteOne(batch, ref)
+ * позволяет удалить вместе с документом связанные (не больше одного на документ,
+ * поэтому порция — половина лимита).
+ */
+export async function deleteAllDocs(collectionOrQuery, deleteOne = (batch, ref) => batch.delete(ref)) {
   const snap = await getDocs(collectionOrQuery);
-  for (let i = 0; i < snap.docs.length; i += BATCH_SIZE) {
+  const size = BATCH_SIZE / 2;
+  for (let i = 0; i < snap.docs.length; i += size) {
     const batch = writeBatch(db);
-    snap.docs.slice(i, i + BATCH_SIZE).forEach((d) => batch.delete(d.ref));
+    snap.docs.slice(i, i + size).forEach((d) => deleteOne(batch, d.ref));
     await batch.commit();
   }
 }

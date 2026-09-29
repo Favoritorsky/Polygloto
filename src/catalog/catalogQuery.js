@@ -36,3 +36,23 @@ export function matchesSearch(course, words) {
   const keywords = new Set(course.searchKeywords ?? []);
   return words.every((w) => keywords.has(w));
 }
+
+/** Числовое значение поля для сортировки (Timestamp → миллисекунды). */
+function sortValue(course, field) {
+  const value = course[field];
+  if (value && typeof value.toMillis === 'function') return value.toMillis();
+  return typeof value === 'number' ? value : 0;
+}
+
+/**
+ * Сортировка на клиенте — для запросов с фильтрами. Составные индексы
+ * Firestore ключ деплоя создать не может, поэтому запросы с фильтром
+ * обходятся без orderBy, а порядок наводится здесь.
+ */
+export function sortCourses(courses, sort) {
+  const { field, direction } = CATALOG_SORTS[sort] ?? CATALOG_SORTS[DEFAULT_SORT];
+  const sign = direction === 'desc' ? -1 : 1;
+  return [...courses].sort(
+    (a, b) => sign * (sortValue(a, field) - sortValue(b, field)) || sortValue(b, 'publishedAt') - sortValue(a, 'publishedAt'),
+  );
+}

@@ -79,7 +79,9 @@ try {
   // 10 комментариев в разных курсах (число считается запросом count() по комментариям).
   const courseIds = (await db.collection('publicCourses').where('authorId', '==', uid).get()).docs.map((d) => d.id);
   for (let i = 0; i < 10; i += 1) {
-    await db.collection(`courses/${courseIds[i % courseIds.length]}/comments`).add({ authorId: uid, authorName: 'Элронд', text: `Комментарий ${i}`, createdAt: FieldValue.serverTimestamp() });
+    const courseId = courseIds[i % courseIds.length];
+    const ref = await db.collection(`courses/${courseId}/comments`).add({ authorId: uid, authorName: 'Элронд', text: `Комментарий ${i}`, createdAt: FieldValue.serverTimestamp() });
+    await db.doc(`commentAuthors/${ref.id}`).set({ authorId: uid, courseId });
   }
   await page.reload();
   await page.locator('li', { hasText: 'Собеседник' }).getByText('Получен').waitFor();

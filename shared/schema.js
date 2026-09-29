@@ -16,9 +16,10 @@ export const COLLECTIONS = Object.freeze({
   PUBLIC_COURSES: 'publicCourses',
   RATE_LIMITS: 'rateLimits',
   CATALOG_META: 'catalogMeta',
+  COMMENT_AUTHORS: 'commentAuthors',
 });
 
-/** catalogMeta/languages — список языков опубликованных курсов (пишет onPublicCourseWritten). */
+/** catalogMeta/languages — список языков опубликованных курсов (обновляет админ при одобрении). */
 export const CATALOG_LANGUAGES_DOC = 'languages';
 
 /** Подколлекции курса (и его опубликованной копии). */

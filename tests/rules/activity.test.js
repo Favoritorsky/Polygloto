@@ -1,5 +1,5 @@
 import { assertFails, assertSucceeds } from '@firebase/rules-unit-testing';
-import { Timestamp, collection, deleteDoc, doc, getDoc, getDocs, increment, serverTimestamp, setDoc, updateDoc, writeBatch } from 'firebase/firestore';
+import { Timestamp, collection, deleteDoc, doc, getCountFromServer, getDoc, getDocs, increment, query, serverTimestamp, setDoc, updateDoc, where, writeBatch } from 'firebase/firestore';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { anon, as, course, createEnv, seed, userProfile } from './helpers.js';
 
@@ -117,12 +117,49 @@ describe('ratings', () => {
 });
 
 /** Комментарий так, как его пишет commentService: комментарий и отметка лимита одной записью. */
-function comment(db, uid, { text = 'Отличный курс', authorName = 'Боб', courseId = 'pub', id = 'new1' } = {}) {
+function comment(db, uid, { text = 'Отличный курс', authorName = 'Боб', courseId = 'pub', id = 'new1', marker = { authorId: uid, courseId } } = {}) {
   const batch = writeBatch(db);
   batch.set(doc(db, `courses/${courseId}/comments/${id}`), { authorId: uid, authorName, text, createdAt: serverTimestamp() });
   batch.set(doc(db, `rateLimits/${uid}`), { addComment: serverTimestamp() }, { merge: true });
+  if (marker) batch.set(doc(db, `commentAuthors/${id}`), marker);
   return batch.commit();
 }
+
+describe('commentAuthors', () => {
+  it('комментарий без записи об авторе не создаётся', async () => {
+    await assertFails(comment(as(env, 'bob'), 'bob', { marker: null }));
+  });
+
+  it('запись об авторе должна указывать на свой новый комментарий', async () => {
+    await assertFails(comment(as(env, 'bob'), 'bob', { marker: { authorId: 'carol', courseId: 'pub' } }));
+    await assertFails(comment(as(env, 'bob'), 'bob', { marker: { authorId: 'bob', courseId: 'other' } }));
+    await assertFails(comment(as(env, 'bob'), 'bob', { marker: { authorId: 'bob', courseId: 'pub', extra: 1 } }));
+    await assertFails(setDoc(doc(as(env, 'bob'), 'commentAuthors/c1'), { authorId: 'bob', courseId: 'pub' }));
+  });
+
+  it('счётчик комментариев пользователя читают все', async () => {
+    await assertSucceeds(comment(as(env, 'bob'), 'bob'));
+    const q = query(collection(anon(env), 'commentAuthors'), where('authorId', '==', 'bob'));
+    expect((await getCountFromServer(q)).data().count).toBe(1);
+  });
+
+  it('удаляется только вместе с комментарием', async () => {
+    await assertSucceeds(comment(as(env, 'bob'), 'bob'));
+    const db = as(env, 'bob');
+    await assertFails(deleteDoc(doc(db, 'commentAuthors/new1')));
+    await assertFails(deleteDoc(doc(db, 'courses/pub/comments/new1')));
+    const batch = writeBatch(db);
+    batch.delete(doc(db, 'courses/pub/comments/new1'));
+    batch.delete(doc(db, 'commentAuthors/new1'));
+    await assertSucceeds(batch.commit());
+  });
+
+  it('запись о комментарии, которого уже нет, может убрать любой', async () => {
+    await seed(env, 'commentAuthors/gone', { authorId: 'bob', courseId: 'pub' });
+    await assertFails(deleteDoc(doc(anon(env), 'commentAuthors/gone')));
+    await assertSucceeds(deleteDoc(doc(as(env, 'carol'), 'commentAuthors/gone')));
+  });
+});
 
 describe('comments', () => {
   it('читают все', async () => {

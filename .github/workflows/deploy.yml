@@ -65,8 +65,8 @@ jobs:
         run: firebase apps:sdkconfig web --project "$FIREBASE_PROJECT_ID" --json | node scripts/write-web-config.mjs
       - run: npm run build
       # Деплой через REST API (не `firebase deploy`): см. комментарий в скрипте.
-      - name: Деплой правил, индексов и сайта
-        run: node scripts/deploy-firebase.mjs rules indexes hosting
+      - name: Деплой правил и сайта
+        run: node scripts/deploy-firebase.mjs rules hosting
       - name: Назначение администратора
         env:
           ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { buildSearchKeywords } from '../../shared/schema.js';
-import { matchesSearch, parseSearch, pickKeyword } from './catalogQuery.js';
+import { matchesSearch, parseSearch, pickKeyword, sortCourses } from './catalogQuery.js';
 
 const course = { searchKeywords: buildSearchKeywords('Токипона за 10 уроков', 'Toki Pona') };
 
@@ -37,5 +37,28 @@ describe('matchesSearch', () => {
   it('курс без ключей не совпадает с непустым запросом', () => {
     expect(matchesSearch({}, ['a'])).toBe(false);
     expect(matchesSearch({}, [])).toBe(true);
+  });
+});
+
+describe('sortCourses', () => {
+  const ts = (ms) => ({ toMillis: () => ms });
+  const courses = [
+    { id: 'a', score: 1, likesCount: 5, dislikesCount: 2, publishedAt: ts(100) },
+    { id: 'b', score: 3, likesCount: 3, dislikesCount: 0, publishedAt: ts(200) },
+    { id: 'c', score: 1, likesCount: 1, dislikesCount: 0, publishedAt: ts(300) },
+  ];
+  const ids = (list) => list.map((c) => c.id).join('');
+
+  it('сортирует по выбранному полю и направлению', () => {
+    expect(ids(sortCourses(courses, 'rating'))).toBe('bca');
+    expect(ids(sortCourses(courses, 'likes'))).toBe('abc');
+    expect(ids(sortCourses(courses, 'dislikes'))).toBe('cba');
+    expect(ids(sortCourses(courses, 'newest'))).toBe('cba');
+  });
+
+  it('не меняет исходный массив и понимает неизвестную сортировку', () => {
+    const copy = [...courses];
+    expect(ids(sortCourses(courses, 'nope'))).toBe('bca');
+    expect(courses).toEqual(copy);
   });
 });

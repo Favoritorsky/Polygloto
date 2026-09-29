@@ -10,7 +10,6 @@ import {
   doc,
   getDoc,
   onSnapshot,
-  orderBy,
   query,
   serverTimestamp,
   updateDoc,
@@ -20,6 +19,7 @@ import {
 import { COLLECTIONS, CONTENT_SUBCOLLECTIONS, COURSE_STATUS, LIMITS, RATE_LIMITS, SUBCOLLECTIONS } from '../../shared/schema.js';
 import { db } from './firebase.js';
 import { deleteAllDocs } from './batchUtils.js';
+import { deleteCommentInBatch } from './commentService.js';
 import { stampRateLimit, withRateLimit } from './rateLimit.js';
 
 /** Вид раздела курса: уроки или справочник. */
@@ -86,9 +86,23 @@ export function subscribeToCourse(courseId, onData, onError) {
   );
 }
 
+const millis = (value) => value?.toMillis?.() ?? 0;
+
+/**
+ * Курсы автора, свежие сверху. Сортировка на клиенте: запрос
+ * «authorId + orderBy» потребовал бы составной индекс, а его ключ деплоя
+ * создать не может.
+ */
 export function subscribeToMyCourses(uid, onData, onError) {
-  const q = query(collection(db, COLLECTIONS.COURSES), where('authorId', '==', uid), orderBy('updatedAt', 'desc'));
-  return onSnapshot(q, (snap) => onData(snap.docs.map((d) => ({ id: d.id, ...d.data() }))), onError);
+  const q = query(collection(db, COLLECTIONS.COURSES), where('authorId', '==', uid));
+  return onSnapshot(
+    q,
+    (snap) => {
+      const courses = snap.docs.map((d) => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) }));
+      onData(courses.sort((a, b) => millis(b.updatedAt) - millis(a.updatedAt)));
+    },
+    onError,
+  );
 }
 
 /** Сохраняет метаданные курса (только в статусе draft — см. правила). */
@@ -126,7 +140,7 @@ export async function deleteCourse(courseId) {
   const publicRef = doc(db, COLLECTIONS.PUBLIC_COURSES, courseId);
   const isPublished = (await getDoc(publicRef)).exists();
   if (isPublished) {
-    await deleteAllDocs(collection(course, SUBCOLLECTIONS.COMMENTS));
+    await deleteAllDocs(collection(course, SUBCOLLECTIONS.COMMENTS), deleteCommentInBatch);
     await deleteAllDocs(collection(course, SUBCOLLECTIONS.REACTIONS));
     for (const name of CONTENT_SUBCOLLECTIONS) await deleteAllDocs(collection(publicRef, name));
     await deleteDoc(publicRef);
