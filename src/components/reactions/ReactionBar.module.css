@@ -1,0 +1,45 @@
+.bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+}
+
+.reaction {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+.reaction:hover:not(:disabled) {
+  background: var(--color-surface-muted);
+}
+
+.reaction:disabled {
+  cursor: default;
+}
+
+.empty {
+  opacity: 0.55;
+}
+
+.empty:hover {
+  opacity: 1;
+}
+
+.mine {
+  border-color: var(--color-primary);
+  background: rgb(42 157 143 / 0.12);
+  opacity: 1;
+}
+
+.count {
+  font-size: 0.8rem;
+  font-weight: 700;
+}

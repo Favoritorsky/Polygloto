@@ -58,6 +58,11 @@ export function buildPublicSnapshot({ course, author, lessons, reference, dictio
       titleLower: normalizeText(title),
       languageLower: normalizeText(language),
       searchKeywords: buildSearchKeywords(title, language),
+      // Оглавление: читателю не нужно грузить все уроки, чтобы показать навигацию.
+      toc: {
+        lessons: cleanLessons.map((l) => ({ id: l.id, title: l.data.title })),
+        reference: cleanReference.map((r) => ({ id: r.id, title: r.data.title })),
+      },
       lessonsCount: cleanLessons.length,
       wordsCount: cleanDictionary.length,
     },

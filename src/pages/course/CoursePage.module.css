@@ -1,0 +1,65 @@
+.page {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1.5rem;
+}
+
+.info {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+
+.language {
+  margin: 0;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-primary);
+}
+
+.title {
+  margin: 0.25rem 0;
+  overflow-wrap: anywhere;
+}
+
+.author {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.description {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+
+.body {
+  min-height: 200px;
+}
+
+.missing {
+  text-align: center;
+  padding: 3rem 1rem;
+}

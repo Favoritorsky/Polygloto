@@ -106,17 +106,15 @@ async function writePublicSnapshot(courseRef, snapshot, moderatorId) {
   }
   await writer.close();
 
+  // Метаданные заменяются целиком (merge по известным ключам), а счётчики,
+  // которые ведут другие функции (оценки, комментарии), сохраняются.
   const existing = await publicRef.get();
+  const counters = existing.exists
+    ? {}
+    : { likesCount: 0, dislikesCount: 0, score: 0, commentsCount: 0, publishedAt: FieldValue.serverTimestamp() };
   await publicRef.set(
-    {
-      ...snapshot.meta,
-      likesCount: existing.exists ? existing.get('likesCount') ?? 0 : 0,
-      dislikesCount: existing.exists ? existing.get('dislikesCount') ?? 0 : 0,
-      score: existing.exists ? existing.get('score') ?? 0 : 0,
-      publishedAt: existing.exists ? existing.get('publishedAt') : FieldValue.serverTimestamp(),
-      updatedAt: FieldValue.serverTimestamp(),
-      approvedBy: moderatorId,
-    },
+    { ...snapshot.meta, ...counters, updatedAt: FieldValue.serverTimestamp(), approvedBy: moderatorId },
+    { merge: true },
   );
 }
 
