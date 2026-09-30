@@ -20,3 +20,46 @@
   height: 0.3rem;
   border-radius: 2px;
 }
+
+.caption {
+  color: var(--color-text-muted);
+}
+
+.abbr {
+  color: var(--color-text-muted);
+  font-size: 0.8em;
+}
+
+.toggle {
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--color-text);
+  font: inherit;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.toggle:hover {
+  border-color: var(--color-border-strong);
+}
+
+/* Скрытая категория: зачёркнута и приглушена, образец цвета пустой. */
+.off {
+  color: var(--color-text-muted);
+  text-decoration: line-through;
+}
+
+.off .swatch {
+  outline: 1px solid var(--color-border-strong);
+}
+
+.showAll {
+  border: none;
+  background: none;
+  color: var(--color-primary);
+  font: inherit;
+  cursor: pointer;
+  padding: 0.1rem 0.25rem;
+  text-decoration: underline;
+}

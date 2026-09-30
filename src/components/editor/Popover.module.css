@@ -34,4 +34,7 @@
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
   padding: 0.5rem;
+  /* Длинные списки (готовые наборы категорий) прокручиваются внутри. */
+  max-height: min(24rem, 70vh);
+  overflow-y: auto;
 }

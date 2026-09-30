@@ -4,7 +4,8 @@ import { withHistory } from 'slate-history';
 import { Editable, Slate, withReact } from 'slate-react';
 import { LIMITS } from '../../../shared/schema.js';
 import CategoryLegend from '../content/CategoryLegend.jsx';
-import { leafPresentation } from '../content/leafStyle.js';
+import { collectUsedCategories } from '../content/categories.js';
+import { categoryTitle, leafPresentation } from '../content/leafStyle.js';
 import { elementEditors } from './editorRegistry.js';
 import { fromSlate, toSlate, toggleMark, withPolygloto } from './slateModel.js';
 import Toolbar from './Toolbar.jsx';
@@ -23,6 +24,8 @@ export default function ContentEditor({ initialBlocks, onChange, categories = []
   const initialValue = useMemo(() => toSlate(initialBlocks), [initialBlocks]);
   const categoriesById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
   const [blockCount, setBlockCount] = useState(initialValue.length);
+  // Легенда в редакторе — только по категориям, которые уже есть в тексте (готовых наборов много).
+  const [used, setUsed] = useState(() => collectUsedCategories(initialValue));
 
   const handleChange = useCallback(
     (value) => {
@@ -30,6 +33,7 @@ export default function ContentEditor({ initialBlocks, onChange, categories = []
       const changed = editor.operations.some((op) => op.type !== 'set_selection');
       if (!changed) return;
       setBlockCount(value.length);
+      setUsed(collectUsedCategories(value));
       onChange(fromSlate(value, categories));
     },
     [editor, onChange, categories],
@@ -68,13 +72,14 @@ export default function ContentEditor({ initialBlocks, onChange, categories = []
   const renderLeaf = useCallback(
     ({ attributes, children, leaf }) => {
       const { className, style, category } = leafPresentation(leaf, categoriesById);
+      // В редакторе сокращение — в подсказке, без подписи-наложения внутри contenteditable.
       const extra = renderLeafExtra?.(leaf);
       return (
         <span
           {...attributes}
           className={[className, extra?.className].filter(Boolean).join(' ') || undefined}
           style={style}
-          title={[category?.name, extra?.title].filter(Boolean).join(' · ') || undefined}
+          title={[categoryTitle(category), extra?.title].filter(Boolean).join(' · ') || undefined}
         >
           {children}
         </span>
@@ -98,7 +103,7 @@ export default function ContentEditor({ initialBlocks, onChange, categories = []
       <Slate editor={editor} initialValue={initialValue} onChange={handleChange}>
         {!readOnly && <Toolbar categories={categories} extraTools={extraTools} />}
         <div className={styles.page}>
-          <CategoryLegend categories={categories} />
+          <CategoryLegend categories={categories} used={used} />
           <Editable
             className={styles.editable}
             readOnly={readOnly}

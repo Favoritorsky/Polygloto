@@ -1,6 +1,6 @@
 import DictWord from '../dictionary/DictWord.jsx';
 import { segmentText } from '../../content/dictionaryIndex.js';
-import { leafPresentation } from './leafStyle.js';
+import { categoryTitle, leafPresentation } from './leafStyle.js';
 import { useContentContext } from './contentContext.js';
 
 /**
@@ -9,14 +9,15 @@ import { useContentContext } from './contentContext.js';
  * ссылку на статью, иначе слова сопоставляются со словарём автоматически.
  */
 export default function TextLeaf({ leaf }) {
-  const { categoriesById, dictionary } = useContentContext();
-  const { className, style, category } = leafPresentation(leaf, categoriesById);
-  const title = category?.name;
+  const { categoriesById, dictionary, hiddenCategories } = useContentContext();
+  const { className, style, category } = leafPresentation(leaf, categoriesById, hiddenCategories);
+  const title = categoryTitle(category);
+  const abbr = category?.abbr || undefined;
 
   const manual = leaf.dictRef ? dictionary?.byId.get(leaf.dictRef) : null;
   if (manual) {
     return (
-      <DictWord entries={[manual]} className={className} style={style}>
+      <DictWord entries={[manual]} className={className} style={style} title={title}>
         {leaf.text}
       </DictWord>
     );
@@ -35,7 +36,7 @@ export default function TextLeaf({ leaf }) {
 
   if (!className && !leaf.color) return <>{content}</>;
   return (
-    <span className={className} style={style} title={title}>
+    <span className={className} style={style} title={title} data-abbr={abbr}>
       {content}
     </span>
   );

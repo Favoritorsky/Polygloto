@@ -16,6 +16,7 @@ import {
   where,
   writeBatch,
 } from 'firebase/firestore';
+import { defaultCategories } from '../../shared/categories.js';
 import { COLLECTIONS, CONTENT_SUBCOLLECTIONS, COURSE_STATUS, LIMITS, RATE_LIMITS, SUBCOLLECTIONS } from '../../shared/schema.js';
 import { db } from './firebase.js';
 import { deleteAllDocs } from './batchUtils.js';
@@ -61,7 +62,8 @@ export async function createCourse(uid, { title, language, description = '' }) {
     title: title.trim(),
     language: language.trim(),
     description: description.trim(),
-    categories: [],
+    // Готовые наборы: части речи и фонетика; автор уберёт лишнее в настройках.
+    categories: defaultCategories(),
     lessonOrder: [lessonRef.id],
     referenceOrder: [],
     status: COURSE_STATUS.DRAFT,

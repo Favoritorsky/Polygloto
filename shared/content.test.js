@@ -64,8 +64,8 @@ describe('sanitizeCategories', () => {
         { id: 'cat_c', name: 'Корень', color: 'javascript:1' },
       ]),
     ).toEqual([
-      { id: 'cat_a', name: 'Гласные', color: '#e63946' },
-      { id: 'cat_c', name: 'Корень', color: '#1d3557' },
+      { id: 'cat_a', name: 'Гласные', color: '#e63946', group: 'custom' },
+      { id: 'cat_c', name: 'Корень', color: '#1d3557', group: 'custom' },
     ]);
   });
 });

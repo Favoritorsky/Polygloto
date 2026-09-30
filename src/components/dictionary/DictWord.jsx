@@ -6,7 +6,7 @@ import styles from './DictWord.module.css';
  * «Активная ссылка» на словарь: подсвеченное слово, по наведению, фокусу или
  * нажатию показывает перевод и часть речи.
  */
-export default function DictWord({ entries, className, style, children }) {
+export default function DictWord({ entries, className, style, title, children }) {
   const [open, setOpen] = useState(false);
   const [pinned, setPinned] = useState(false);
   const id = useId();
@@ -16,6 +16,7 @@ export default function DictWord({ entries, className, style, children }) {
     <span
       className={[styles.word, className].filter(Boolean).join(' ')}
       style={style}
+      title={visible ? undefined : title}
       tabIndex={0}
       role="button"
       aria-expanded={visible}

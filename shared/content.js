@@ -133,20 +133,8 @@ export function sanitizeBlocks(blocks, options = {}) {
     .filter(Boolean);
 }
 
-/** Очищает список категорий курса. */
-export function sanitizeCategories(categories) {
-  if (!Array.isArray(categories)) return [];
-  const seen = new Set();
-  const result = [];
-  for (const c of categories.slice(0, LIMITS.COURSE_CATEGORIES_MAX)) {
-    if (!c || typeof c !== 'object' || typeof c.id !== 'string' || !ID_RE.test(c.id) || seen.has(c.id)) continue;
-    const name = cleanString(c.name, LIMITS.CATEGORY_NAME_MAX).trim();
-    if (!name) continue;
-    seen.add(c.id);
-    result.push({ id: c.id, name, color: COLOR_SET.has(c.color) ? c.color : PALETTE[0] });
-  }
-  return result;
-}
+// Категории курса очищает shared/categories.js; реэкспорт для старых импортов.
+export { sanitizeCategories } from './categories.js';
 
 /** Собирает простой текст блоков (для поиска, превью и сопоставления со словарём). */
 export function blocksToPlainText(blocks) {

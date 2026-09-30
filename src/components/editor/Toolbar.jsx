@@ -1,5 +1,6 @@
 import { Editor } from 'slate';
 import { useSlate } from 'slate-react';
+import { CATEGORY_GROUPS, categoryGroup } from '../../../shared/categories.js';
 import { PALETTE } from '../../../shared/schema.js';
 import { insertables } from './editorRegistry.js';
 import Popover from './Popover.jsx';
@@ -132,20 +133,31 @@ export default function Toolbar({ categories, extraTools }) {
             {categories.length === 0 && (
               <p className={styles.hint}>Категории задаются во вкладке «Настройки курса».</p>
             )}
-            {categories.map((c) => (
-              <button
-                key={c.id}
-                type="button"
-                className={styles.menuItem}
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  setMarkValue(editor, 'category', c.id);
-                  close();
-                }}
-              >
-                <span className={styles.categorySwatch} style={{ backgroundColor: c.color }} /> {c.name}
-              </button>
-            ))}
+            {CATEGORY_GROUPS.map((group) => {
+              const items = categories.filter((c) => categoryGroup(c) === group.id);
+              if (items.length === 0) return null;
+              return (
+                <div key={group.id} role="group" aria-label={group.label}>
+                  <p className={styles.menuGroup}>{group.label}</p>
+                  {items.map((c) => (
+                    <button
+                      key={c.id}
+                      type="button"
+                      className={styles.menuItem}
+                      aria-pressed={marks.category === c.id}
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        setMarkValue(editor, 'category', c.id);
+                        close();
+                      }}
+                    >
+                      <span className={styles.categorySwatch} style={{ backgroundColor: c.color }} /> {c.name}
+                      {c.abbr && <span className={styles.menuAbbr}>{c.abbr}</span>}
+                    </button>
+                  ))}
+                </div>
+              );
+            })}
             {marks.category && (
               <button
                 type="button"

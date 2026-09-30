@@ -115,3 +115,18 @@
   white-space: normal;
   width: 14rem;
 }
+
+.menuGroup {
+  margin: 0.4rem 0.5rem 0.15rem;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.menuAbbr {
+  margin-left: auto;
+  padding-left: 0.75rem;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}

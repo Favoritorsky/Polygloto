@@ -16,7 +16,7 @@ try {
   // Категория в настройках
   await page.getByRole('tab', { name: 'Настройки курса' }).click();
   await page.getByRole('button', { name: '+ Категория' }).click();
-  await page.getByLabel('Название категории').fill('Гласные');
+  await page.getByLabel('Название категории').last().fill('Гласные');
   await page.getByText('Все изменения сохранены').waitFor({ timeout: 10000 });
   await page.getByRole('tab', { name: 'Самоучитель' }).click();
 

@@ -15,6 +15,7 @@ import {
 } from 'firebase/firestore';
 import { Timestamp } from 'firebase/firestore';
 import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest';
+import { defaultCategories } from '../../shared/categories.js';
 import { anon, as, course, createEnv, seed, userProfile } from './helpers.js';
 
 let env;
@@ -77,6 +78,13 @@ describe('courses: создание и удаление', () => {
 
   it('автор создаёт черновик с первым уроком', async () => {
     await assertSucceeds(create(as(env, 'alice'), 'alice'));
+  });
+
+  it('новый курс сразу с готовыми наборами категорий, но не больше 20', async () => {
+    await assertSucceeds(create(as(env, 'alice'), 'alice', { id: 'p', overrides: { categories: defaultCategories() } }));
+    await seed(env, 'rateLimits/bob', { createCourse: Timestamp.fromMillis(Date.now() - 31000) });
+    const tooMany = Array.from({ length: 21 }, (_, i) => ({ id: `c${i}`, name: `К${i}`, color: '#1d3557' }));
+    await assertFails(create(as(env, 'bob'), 'bob', { id: 'q', overrides: { categories: tooMany } }));
   });
 
   it('не чаще раза в 30 секунд', async () => {

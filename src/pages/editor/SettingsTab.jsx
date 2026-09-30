@@ -47,7 +47,10 @@ export default function SettingsTab() {
     setErrors(nextErrors);
     // Невалидное не сохраняем: правила всё равно отклонят запись.
     if (Object.keys(nextErrors).length === 0) {
-      autosave.schedule({ ...next, categories: next.categories.map((c) => ({ ...c, name: c.name.trim() })) });
+      autosave.schedule({
+        ...next,
+        categories: next.categories.map(({ abbr, ...c }) => ({ ...c, name: c.name.trim(), ...(abbr?.trim() && { abbr: abbr.trim() }) })),
+      });
     }
   }
 
