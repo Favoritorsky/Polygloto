@@ -38,6 +38,13 @@ if (diagnose) {
   console.log('Язык писем:', current.data.notification?.defaultLocale ?? '(не задан)');
   console.log('Способ отправки:', sendEmail.method, sendEmail.smtp ? `(SMTP ${sendEmail.smtp.host}:${sendEmail.smtp.port})` : '');
   for (const name of ['verifyEmailTemplate', 'resetPasswordTemplate', 'changeEmailTemplate']) console.log(`${name}:`, JSON.stringify(pick(sendEmail[name])));
+  // %APP_NAME% в стандартных темах писем — «публичное имя» проекта (OAuth brand).
+  const fb = await api('GET', `https://firebase.googleapis.com/v1beta1/projects/${project}`);
+  console.log('Проект Firebase:', fb.ok ? JSON.stringify({ displayName: fb.data.displayName, projectNumber: fb.data.projectNumber }) : fb.status);
+  if (fb.ok) {
+    const brands = await api('GET', `https://iap.googleapis.com/v1/projects/${fb.data.projectNumber}/brands`);
+    console.log('OAuth brand:', brands.ok ? JSON.stringify((brands.brands ?? brands.data.brands ?? []).map((b) => b.applicationTitle)) : `${brands.status} ${JSON.stringify(brands.data).slice(0, 200)}`);
+  }
   console.log('Email/Password:', JSON.stringify(current.data.signIn?.email ?? {}));
   const email = (process.env.ADMIN_EMAIL ?? '').split(',')[0]?.trim();
   if (email) {
@@ -76,24 +83,26 @@ const templates = {
   },
 };
 
-async function applyTemplates(withBody) {
-  const sendEmailPatch = {};
-  const fields = [];
-  for (const [name, { subject, body }] of Object.entries(templates)) {
-    sendEmailPatch[name] = { senderDisplayName: 'Polygloto', subject, ...(withBody && { body, bodyFormat: 'HTML' }) };
-    for (const field of Object.keys(sendEmailPatch[name])) fields.push(`notification.sendEmail.${name}.${field}`);
-  }
-  const mask = ['notification.defaultLocale', ...fields].join(',');
-  return api('PATCH', `${configUrl}?updateMask=${mask}`, { notification: { defaultLocale: 'ru', sendEmail: sendEmailPatch } });
+// Firebase разрешает менять тему и текст только некоторых писем
+// (для подтверждения почты и сброса пароля — EMAIL_TEMPLATE_UPDATE_NOT_ALLOWED),
+// поэтому каждое письмо настраиваем отдельно: сначала целиком, иначе только имя отправителя.
+async function applyTemplate(name, fields) {
+  const mask = Object.keys(fields).map((field) => `notification.sendEmail.${name}.${field}`).join(',');
+  return api('PATCH', `${configUrl}?updateMask=${mask}`, { notification: { sendEmail: { [name]: fields } } });
 }
 
-let res = await applyTemplates(true);
-if (res.ok) console.log('Письма Auth: язык ru, отправитель «Polygloto», свои темы и текст.');
-else {
-  console.log(`::warning::Текст писем не принят (${res.status}): ${JSON.stringify(res.data).slice(0, 300)}`);
-  res = await applyTemplates(false);
-  if (res.ok) console.log('Письма Auth: язык ru, отправитель «Polygloto», свои темы (текст стандартный).');
-  else console.log(`::warning::Не удалось обновить настройки писем (${res.status}): ${JSON.stringify(res.data).slice(0, 300)}`);
+const locale = await api('PATCH', `${configUrl}?updateMask=notification.defaultLocale`, { notification: { defaultLocale: 'ru' } });
+if (!locale.ok) console.log(`::warning::Не удалось задать язык писем (${locale.status}).`);
+for (const [name, { subject, body }] of Object.entries(templates)) {
+  const full = await applyTemplate(name, { senderDisplayName: 'Polygloto', subject, body, bodyFormat: 'HTML' });
+  if (full.ok) {
+    console.log(`${name}: отправитель, тема и текст Polygloto.`);
+    continue;
+  }
+  const short = await applyTemplate(name, { senderDisplayName: 'Polygloto' });
+  console.log(short.ok
+    ? `${name}: отправитель «Polygloto» (тему и текст Firebase менять не даёт: ${full.data.error?.message}).`
+    : `::warning::${name}: не удалось обновить (${short.status}) ${JSON.stringify(short.data).slice(0, 200)}`);
 }
 
 async function setMethod(sendEmailPatch, mask) {
