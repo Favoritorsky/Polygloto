@@ -12,9 +12,23 @@
   min-width: 0;
 }
 
+.card {
+  cursor: pointer;
+}
+
 .card:hover {
   box-shadow: var(--shadow-md);
   transform: translateY(-1px);
+}
+
+/* Фокус с клавиатуры виден на всей карточке, а не только на заголовке. */
+.card:focus-within {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.card:hover .link {
+  color: var(--color-primary);
 }
 
 .language {
@@ -36,7 +50,11 @@
   text-decoration: none;
 }
 
-/* Вся карточка кликабельна, но в разметке одна ссылка. */
+.link:focus-visible {
+  outline: none;
+}
+
+/* Вся карточка кликабельна, но в разметке одна ссылка (см. CardLink). */
 .link::after {
   content: '';
   position: absolute;

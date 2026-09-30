@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import CardLink from '../../components/ui/CardLink.jsx';
 import CreateCourseForm from '../../components/course/CreateCourseForm.jsx';
 import StatusBadge from '../../components/course/StatusBadge.jsx';
 import Alert from '../../components/ui/Alert.jsx';
@@ -45,9 +46,9 @@ export default function MyCoursesPage() {
           {courses?.map((course) => (
             <li key={course.id} className={styles.item}>
               <div className={styles.main}>
-                <Link to={`/courses/${course.id}/edit`} className={styles.title}>
+                <CardLink to={`/courses/${course.id}/edit`} className={styles.title}>
                   {course.title}
-                </Link>
+                </CardLink>
                 <div className={styles.meta}>
                   <span>{course.language}</span>
                   <span>Изменён {formatDate(course.updatedAt)}</span>

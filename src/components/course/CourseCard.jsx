@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import CardLink from '../ui/CardLink.jsx';
 import styles from './CourseCard.module.css';
 
 const DESCRIPTION_PREVIEW = 160;
@@ -10,9 +10,9 @@ export default function CourseCard({ course, showAuthor = true }) {
     <article className={styles.card}>
       <p className={styles.language}>{course.language}</p>
       <h3 className={styles.title}>
-        <Link to={`/course/${course.id}`} className={styles.link}>
+        <CardLink to={`/course/${course.id}`} className={styles.link}>
           {course.title}
-        </Link>
+        </CardLink>
       </h3>
       {showAuthor && <p className={styles.author}>{course.authorName || 'Без имени'}</p>}
       {description && (
