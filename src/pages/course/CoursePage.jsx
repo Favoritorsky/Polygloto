@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
-import CategoryLegend from '../../components/content/CategoryLegend.jsx';
 import RatingButtons from '../../components/course/RatingButtons.jsx';
 import DictionaryBrowser from '../../components/dictionary/DictionaryBrowser.jsx';
 import AsyncState from '../../components/ui/AsyncState.jsx';
@@ -84,8 +83,6 @@ export default function CoursePage() {
                 </div>
                 <RatingButtons course={course} />
               </header>
-
-              {course.categories?.length > 0 && <CategoryLegend categories={course.categories} />}
 
               <Tabs tabs={TABS} active={tab} onChange={changeTab} label="Разделы курса" />
               <div className={styles.body}>
