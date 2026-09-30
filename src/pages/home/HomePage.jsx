@@ -7,7 +7,7 @@ import { buildDictionaryIndex } from '../../content/dictionaryIndex.js';
 import { useAuth } from '../../hooks/useAuth.js';
 import { useAsync } from '../../hooks/useSubscription.js';
 import { fetchCatalogPage } from '../../services/catalogService.js';
-import { DEMO_BLOCKS, DEMO_CATEGORIES, DEMO_DICTIONARY } from './demoLesson.js';
+import { DEMO_CATEGORIES, DEMO_DICTIONARY, DEMO_EXCERPT } from '../demo/demoCourse.js';
 import styles from './HomePage.module.css';
 
 const SHOWCASE_SIZE = 6;
@@ -58,6 +58,9 @@ export default function HomePage() {
           <Link to="/catalog" className={styles.primary}>
             Открыть каталог
           </Link>
+          <Link to="/demo" className={styles.secondary}>
+            Демо-курс
+          </Link>
           <Link to={authorLink} className={styles.secondary}>
             {user ? 'Создать курс' : 'Стать автором'}
           </Link>
@@ -66,9 +69,16 @@ export default function HomePage() {
 
       <section className={styles.section} aria-labelledby="demo-title">
         <h2 id="demo-title">Попробуйте прямо здесь</h2>
-        <p className={styles.muted}>Так выглядит урок в Polygloto: наведите на слово и решите задание.</p>
+        <p className={styles.muted}>
+          Отрывок из демо-курса испанского: наведите на слово, скройте подсветку части речи в легенде и решите задание.
+        </p>
         <div className={styles.demo}>
-          <ContentRenderer blocks={DEMO_BLOCKS} categories={DEMO_CATEGORIES} dictionary={dictionary} />
+          <ContentRenderer blocks={DEMO_EXCERPT} categories={DEMO_CATEGORIES} dictionary={dictionary} courseId="demo" />
+        </div>
+        <div className={styles.actions}>
+          <Link to="/demo" className={styles.primary}>
+            Открыть весь демо-курс
+          </Link>
         </div>
       </section>
 

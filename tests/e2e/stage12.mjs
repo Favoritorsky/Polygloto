@@ -14,12 +14,17 @@ try {
 
   // Демо-урок работает на тех же компонентах, что и настоящие курсы.
   await page.locator('[role="button"]', { hasText: 'hablo' }).first().hover();
-  await page.getByRole('tooltip').getByText('говорю (hablar').waitFor();
+  await page.getByRole('tooltip').getByText('говорю (hablar)').waitFor();
   assert(true, 'демо: перевод слова по наведению');
-  await page.getByLabel('Yo hablo español').check();
+  await page.getByLabel('Buenas noches').check();
   await page.getByRole('button', { name: 'Проверить' }).click();
   await page.getByText('✓ Верно!').waitFor();
   assert(true, 'демо: задание проверяется');
+  assert((await page.locator('table th[scope="row"]').count()) === 3, 'демо: таблица с заголовками строк и столбцов');
+  await page.getByRole('link', { name: 'Открыть весь демо-курс' }).click();
+  await page.waitForURL('**/demo');
+  await page.goto(BASE);
+  await page.getByRole('heading', { level: 1 }).waitFor();
 
   await page.locator('section', { has: page.getByRole('heading', { name: 'Популярные курсы' }) }).locator('article').first().waitFor();
   const cards = await page.locator('section', { has: page.getByRole('heading', { name: 'Популярные курсы' }) }).locator('article').count();
