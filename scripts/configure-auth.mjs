@@ -1,11 +1,15 @@
 // CI: настройки писем Firebase Authentication через Identity Toolkit Admin API.
 // Письма по умолчанию — на русском, отправитель — «Polygloto».
-// Если заданы SMTP_USER и SMTP_PASSWORD (пароль приложения Gmail), письма
-// отправляются через этот ящик Gmail, а не с общего адреса firebaseapp.com,
-// который почтовые сервисы часто считают спамом.
-// Запуск: node scripts/configure-auth.mjs [--diagnose]
-// --diagnose дополнительно печатает текущие настройки писем и состояние
-// аккаунта администратора (без email), ничего не меняя.
+//
+// Запуск: node scripts/configure-auth.mjs [--diagnose | --smtp-on | --smtp-off]
+//   (без флага) — только язык и имя отправителя; способ отправки не меняет;
+//   --diagnose  — печатает настройки писем и состояние аккаунта админа;
+//   --smtp-on   — включает отправку через ящик SMTP_USER / SMTP_PASSWORD
+//                 (пароль приложения Gmail) и сразу шлёт через Firebase
+//                 письмо сброса пароля на ADMIN_EMAIL как проверку;
+//   --smtp-off  — возвращает стандартную отправку Firebase.
+// Проверить сам SMTP из GitHub Actions нельзя: раннеры не пускают на порты
+// почтовых серверов, поэтому проверка — настоящее письмо через Firebase.
 import { initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
 
@@ -59,34 +63,46 @@ const res = await api('PATCH', `${configUrl}?updateMask=${mask}`, patch);
 if (res.ok) console.log('Письма Auth: язык ru, отправитель «Polygloto».');
 else console.log(`::warning::Не удалось обновить настройки писем (${res.status}): ${JSON.stringify(res.data).slice(0, 300)}`);
 
-const smtpUser = process.env.SMTP_USER?.trim();
-const smtpPassword = process.env.SMTP_PASSWORD?.replace(/\s+/g, '');
-if (smtpUser && smtpPassword && process.env.SMTP_OK !== '0') {
+async function setMethod(sendEmailPatch, mask) {
+  const res = await api('PATCH', `${configUrl}?updateMask=${mask}`, { notification: { sendEmail: sendEmailPatch } });
+  if (!res.ok) throw new Error(`Не удалось изменить способ отправки: ${res.status} ${JSON.stringify(res.data).slice(0, 300)}`);
+}
+
+if (process.argv.includes('--smtp-off')) {
+  await setMethod({ method: 'DEFAULT' }, 'notification.sendEmail.method');
+  console.log('Письма снова уходят со стандартного адреса Firebase.');
+}
+
+if (process.argv.includes('--smtp-on')) {
+  const user = process.env.SMTP_USER?.trim();
+  const password = process.env.SMTP_PASSWORD?.replace(/\s+/g, '');
+  if (!user || !password) throw new Error('Секреты SMTP_USER и SMTP_PASSWORD не заданы');
+  const port = Number(process.env.SMTP_PORT) || 465;
   const smtp = {
-    senderEmail: smtpUser,
+    senderEmail: user,
     host: process.env.SMTP_HOST?.trim() || 'smtp.gmail.com',
-    port: Number(process.env.SMTP_PORT) || 465,
-    username: smtpUser,
-    password: smtpPassword,
-    securityMode: 'SSL',
+    port,
+    username: user,
+    password,
+    securityMode: port === 465 ? 'SSL' : 'START_TLS',
   };
-  const smtpRes = await api(
-    'PATCH',
-    `${configUrl}?updateMask=notification.sendEmail.method,notification.sendEmail.smtp`,
-    { notification: { sendEmail: { method: 'CUSTOM_SMTP', smtp } } },
-  );
-  if (smtpRes.ok) console.log(`Письма Auth отправляются через SMTP ${smtp.host} от ${smtpUser.replace(/^(.).*@/, '$1***@')}.`);
-  else {
-    console.log(`::error::Не удалось включить свой SMTP (${smtpRes.status}): ${JSON.stringify(smtpRes.data).slice(0, 300)}`);
-    process.exit(1);
+  await setMethod({ method: 'CUSTOM_SMTP', smtp }, 'notification.sendEmail.method,notification.sendEmail.smtp');
+  console.log(`Отправка через SMTP ${smtp.host}:${port} (${smtp.securityMode}) от ${user.replace(/^(.).*@/, '$1***@')}, длина пароля ${password.length}.`);
+
+  const email = (process.env.ADMIN_EMAIL ?? '').split(',')[0]?.trim();
+  const key = process.env.FIREBASE_WEB_API_KEY;
+  if (email && key) {
+    const res = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${key}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ requestType: 'PASSWORD_RESET', email }),
+    });
+    const body = await res.text();
+    console.log(res.ok ? 'Firebase принял тестовое письмо (сброс пароля) на адрес администратора.' : `::error::Firebase не отправил письмо: ${res.status} ${body.slice(0, 300)}`);
+    if (!res.ok) {
+      await setMethod({ method: 'DEFAULT' }, 'notification.sendEmail.method');
+      console.log('Вернул стандартную отправку Firebase.');
+      process.exit(1);
+    }
   }
-} else {
-  // Без рабочего SMTP возвращаем стандартную отправку Firebase, иначе письма не уходят вовсе.
-  const reason = smtpUser && smtpPassword ? 'Gmail не принял логин или пароль приложения' : 'SMTP_USER/SMTP_PASSWORD не заданы';
-  if (sendEmail.method === 'CUSTOM_SMTP') {
-    const back = await api('PATCH', `${configUrl}?updateMask=notification.sendEmail.method`, { notification: { sendEmail: { method: 'DEFAULT' } } });
-    if (!back.ok) throw new Error(`Не удалось вернуть стандартную отправку: ${back.status} ${JSON.stringify(back.data).slice(0, 300)}`);
-  }
-  const level = smtpUser && smtpPassword ? '::warning::' : '';
-  console.log(`${level}${reason} — письма уходят со стандартного адреса Firebase.`);
 }
