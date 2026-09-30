@@ -2,7 +2,7 @@
 // Письма по умолчанию — на русском, отправитель — «Polygloto».
 //
 // Запуск: node scripts/configure-auth.mjs [--diagnose | --smtp-on | --smtp-off]
-//   (без флага) — только язык и имя отправителя; способ отправки не меняет;
+//   (без флага) — язык, имя отправителя, темы и текст писем; способ отправки не меняет;
 //   --diagnose  — печатает настройки писем и состояние аккаунта админа;
 //   --smtp-on   — включает отправку через ящик SMTP_USER / SMTP_PASSWORD
 //                 (пароль приложения Gmail) и сразу шлёт через Firebase
@@ -37,7 +37,7 @@ if (diagnose) {
   const pick = (t = {}) => ({ senderLocalPart: t.senderLocalPart, senderDisplayName: t.senderDisplayName, subject: t.subject, customized: t.customized });
   console.log('Язык писем:', current.data.notification?.defaultLocale ?? '(не задан)');
   console.log('Способ отправки:', sendEmail.method, sendEmail.smtp ? `(SMTP ${sendEmail.smtp.host}:${sendEmail.smtp.port})` : '');
-  console.log('Шаблон подтверждения:', JSON.stringify(pick(sendEmail.verifyEmailTemplate)));
+  for (const name of ['verifyEmailTemplate', 'resetPasswordTemplate', 'changeEmailTemplate']) console.log(`${name}:`, JSON.stringify(pick(sendEmail[name])));
   console.log('Email/Password:', JSON.stringify(current.data.signIn?.email ?? {}));
   const email = (process.env.ADMIN_EMAIL ?? '').split(',')[0]?.trim();
   if (email) {
@@ -51,17 +51,50 @@ if (diagnose) {
   process.exit(0);
 }
 
-const template = sendEmail.verifyEmailTemplate ?? {};
-const patch = {
-  notification: {
-    defaultLocale: 'ru',
-    sendEmail: { verifyEmailTemplate: { ...template, senderDisplayName: 'Polygloto' } },
+// Все письма подписаны Polygloto: имя отправителя, тема и текст.
+// %LINK%, %EMAIL%, %NEW_EMAIL% подставляет Firebase.
+const letter = (title, text, action, link = '%LINK%') => `<div style="font-family:Arial,sans-serif;max-width:520px;margin:0 auto;color:#1f2937">
+<h2 style="color:#4f46e5;margin:0 0 16px">Polygloto</h2>
+<p style="font-size:16px;margin:0 0 12px"><b>${title}</b></p>
+<p style="margin:0 0 20px">${text}</p>
+<p style="margin:0 0 24px"><a href="${link}" style="background:#4f46e5;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;display:inline-block">${action}</a></p>
+<p style="font-size:13px;color:#6b7280;margin:0">Если кнопка не открывается, скопируйте ссылку в браузер:<br>${link}</p>
+<p style="font-size:13px;color:#6b7280;margin:16px 0 0">Если вы не запрашивали это письмо, просто проигнорируйте его.<br>Команда Polygloto — интерактивные самоучители любых языков мира</p>
+</div>`;
+const templates = {
+  verifyEmailTemplate: {
+    subject: 'Polygloto: подтвердите адрес почты',
+    body: letter('Подтвердите адрес почты', 'Здравствуйте! Вы зарегистрировались в Polygloto с адресом %EMAIL%. Нажмите кнопку ниже, чтобы подтвердить почту.', 'Подтвердить почту'),
+  },
+  resetPasswordTemplate: {
+    subject: 'Polygloto: сброс пароля',
+    body: letter('Сброс пароля', 'Здравствуйте! Мы получили запрос на сброс пароля для аккаунта Polygloto %EMAIL%. Нажмите кнопку ниже, чтобы задать новый пароль.', 'Задать новый пароль'),
+  },
+  changeEmailTemplate: {
+    subject: 'Polygloto: адрес почты изменён',
+    body: letter('Адрес почты изменён', 'Адрес почты вашего аккаунта Polygloto изменён на %NEW_EMAIL%. Если это сделали не вы, нажмите кнопку ниже, чтобы вернуть прежний адрес %EMAIL%.', 'Вернуть прежний адрес'),
   },
 };
-const mask = 'notification.defaultLocale,notification.sendEmail.verifyEmailTemplate.senderDisplayName';
-const res = await api('PATCH', `${configUrl}?updateMask=${mask}`, patch);
-if (res.ok) console.log('Письма Auth: язык ru, отправитель «Polygloto».');
-else console.log(`::warning::Не удалось обновить настройки писем (${res.status}): ${JSON.stringify(res.data).slice(0, 300)}`);
+
+async function applyTemplates(withBody) {
+  const sendEmailPatch = {};
+  const fields = [];
+  for (const [name, { subject, body }] of Object.entries(templates)) {
+    sendEmailPatch[name] = { senderDisplayName: 'Polygloto', subject, ...(withBody && { body, bodyFormat: 'HTML' }) };
+    for (const field of Object.keys(sendEmailPatch[name])) fields.push(`notification.sendEmail.${name}.${field}`);
+  }
+  const mask = ['notification.defaultLocale', ...fields].join(',');
+  return api('PATCH', `${configUrl}?updateMask=${mask}`, { notification: { defaultLocale: 'ru', sendEmail: sendEmailPatch } });
+}
+
+let res = await applyTemplates(true);
+if (res.ok) console.log('Письма Auth: язык ru, отправитель «Polygloto», свои темы и текст.');
+else {
+  console.log(`::warning::Текст писем не принят (${res.status}): ${JSON.stringify(res.data).slice(0, 300)}`);
+  res = await applyTemplates(false);
+  if (res.ok) console.log('Письма Auth: язык ru, отправитель «Polygloto», свои темы (текст стандартный).');
+  else console.log(`::warning::Не удалось обновить настройки писем (${res.status}): ${JSON.stringify(res.data).slice(0, 300)}`);
+}
 
 async function setMethod(sendEmailPatch, mask) {
   const res = await api('PATCH', `${configUrl}?updateMask=${mask}`, { notification: { sendEmail: sendEmailPatch } });
