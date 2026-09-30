@@ -28,7 +28,7 @@ export default function VerifyEmailNotice({ reason = 'Подтвердите ema
     try {
       await resendVerificationEmail();
       setCooldown(RESEND_COOLDOWN_SECONDS);
-      setMessage({ tone: 'success', text: `Письмо отправлено на ${user.email}.` });
+      setMessage({ tone: 'success', text: `Письмо отправлено на ${user.email}. Если его нет во «Входящих», проверьте «Спам» и «Промоакции».` });
     } catch (err) {
       setMessage({ tone: 'error', text: toUserMessage(err) });
     } finally {

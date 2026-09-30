@@ -1,5 +1,6 @@
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import Avatar from '../profile/Avatar.jsx';
+import ThemeToggle from './ThemeToggle.jsx';
 import Button from '../ui/Button.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
 import { logout } from '../../services/authService.js';
@@ -38,6 +39,7 @@ export default function Header() {
           )}
         </nav>
         <div className={styles.right}>
+          <ThemeToggle />
           {!initializing && !user && (
             <>
               <Button variant="ghost" size="sm" onClick={() => navigate('/login')}>

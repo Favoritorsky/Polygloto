@@ -24,23 +24,23 @@
 
 .error {
   background: var(--color-danger-bg);
-  border-color: #f5c2c0;
+  border-color: var(--color-danger-border);
   color: var(--color-danger);
 }
 
 .success {
   background: var(--color-success-bg);
-  border-color: #c8e6c9;
+  border-color: var(--color-success-border);
   color: var(--color-success);
 }
 
 .warning {
   background: var(--color-warning-bg);
-  border-color: #f3d9a4;
+  border-color: var(--color-warning-border);
   color: var(--color-warning);
 }
 
 .info {
   background: var(--color-info-bg);
-  border-color: #c9dcf2;
+  border-color: var(--color-info-border);
 }

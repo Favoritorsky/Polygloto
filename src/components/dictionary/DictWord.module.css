@@ -7,7 +7,7 @@
 
 .word:hover,
 .word:focus-visible {
-  background: rgb(42 157 143 / 0.12);
+  background: var(--color-primary-tint);
 }
 
 .tooltip {
@@ -22,7 +22,7 @@
   max-width: 22rem;
   padding: 0.6rem 0.8rem;
   background: var(--color-text);
-  color: #fff;
+  color: var(--color-bg);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-md);
   font-size: 0.9rem;

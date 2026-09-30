@@ -13,10 +13,10 @@ try {
   }
 
   // Демо-урок работает на тех же компонентах, что и настоящие курсы.
-  await page.locator('[role="button"]', { hasText: 'olin' }).first().hover();
-  await page.getByRole('tooltip').getByText('любить').waitFor();
+  await page.locator('[role="button"]', { hasText: 'hablo' }).first().hover();
+  await page.getByRole('tooltip').getByText('говорю (hablar').waitFor();
   assert(true, 'демо: перевод слова по наведению');
-  await page.getByLabel('mi olin e sina').check();
+  await page.getByLabel('Yo hablo español').check();
   await page.getByRole('button', { name: 'Проверить' }).click();
   await page.getByText('✓ Верно!').waitFor();
   assert(true, 'демо: задание проверяется');

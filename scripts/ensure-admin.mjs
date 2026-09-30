@@ -26,6 +26,13 @@ for (const email of emails) {
     }
     throw error;
   }
+  // Почту администратора, заданную владельцем в секрете, считаем подтверждённой:
+  // письмо подтверждения может не дойти (спам-фильтры), а без этого админ
+  // не сможет отправлять свои курсы на проверку.
+  if (!user.emailVerified) {
+    await getAuth().updateUser(user.uid, { emailVerified: true });
+    console.log('Почта администратора отмечена подтверждённой.');
+  }
   const ref = db.collection('users').doc(user.uid);
   const snap = await ref.get();
   if (!snap.exists) {

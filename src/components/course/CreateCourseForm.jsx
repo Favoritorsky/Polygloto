@@ -40,7 +40,7 @@ export default function CreateCourseForm({ onCreated, onCancel }) {
       <Field label="Название курса" error={errors.title}>
         {(p) => <input {...p} maxLength={LIMITS.COURSE_TITLE_MAX} value={form.title} onChange={update('title')} autoFocus />}
       </Field>
-      <Field label="Язык" error={errors.language} hint="Например: эсперанто, квенья, токипона, ваш собственный конланг.">
+      <Field label="Язык" error={errors.language} hint="Например: английский, испанский, японский, эсперанто.">
         {(p) => <input {...p} maxLength={LIMITS.COURSE_LANGUAGE_MAX} value={form.language} onChange={update('language')} />}
       </Field>
       <Field label="Короткое описание" error={errors.description}>

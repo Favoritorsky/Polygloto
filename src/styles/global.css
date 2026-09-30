@@ -12,11 +12,20 @@
   --color-accent: #e76f51;
   --color-danger: #c62828;
   --color-danger-bg: #fdecea;
+  --color-danger-contrast: #ffffff;
   --color-success: #2e7d32;
   --color-success-bg: #e8f5e9;
   --color-warning: #8a5a00;
   --color-warning-bg: #fff4e0;
   --color-info-bg: #e8f1fb;
+  --color-danger-border: #f5c2c0;
+  --color-success-border: #c8e6c9;
+  --color-warning-border: #f3d9a4;
+  --color-info-border: #c9dcf2;
+  --color-surface-subtle: #fbfaf7;
+  --color-primary-tint: rgb(42 157 143 / 0.12);
+  --color-border-strong: rgb(0 0 0 / 0.1);
+  --color-overlay: rgb(0 0 0 / 0.35);
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -29,6 +38,39 @@
 
   --content-width: 1120px;
   color-scheme: light;
+}
+
+/* Тёмная тема — по умолчанию (атрибут ставит public/theme-init.js до отрисовки). */
+:root[data-theme='dark'] {
+  --color-bg: #14161a;
+  --color-surface: #1d2025;
+  --color-surface-muted: #262a30;
+  --color-border: #353a42;
+  --color-text: #e7e6e3;
+  --color-text-muted: #a0a5ab;
+  --color-primary: #3dbaa9;
+  --color-primary-hover: #5ccbbb;
+  --color-primary-contrast: #0c1f1c;
+  --color-accent: #f08a6c;
+  --color-danger: #f07a7a;
+  --color-danger-bg: #3a2020;
+  --color-danger-contrast: #2a0c0c;
+  --color-success: #74c47a;
+  --color-success-bg: #1c3320;
+  --color-warning: #e3b862;
+  --color-warning-bg: #372c17;
+  --color-info-bg: #1a2839;
+  --color-danger-border: #5e2d2d;
+  --color-success-border: #2f5234;
+  --color-warning-border: #5e4822;
+  --color-info-border: #2c4566;
+  --color-surface-subtle: #191c20;
+  --color-primary-tint: rgb(61 186 169 / 0.16);
+  --color-border-strong: rgb(255 255 255 / 0.12);
+  --color-overlay: rgb(0 0 0 / 0.6);
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-md: 0 4px 16px rgb(0 0 0 / 0.5);
+  color-scheme: dark;
 }
 
 *,

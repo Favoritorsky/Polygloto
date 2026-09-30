@@ -81,7 +81,7 @@ export default function WordForm({ initial, onSubmit, onCancel, submitLabel = '�
               maxLength={LIMITS.WORD_EXAMPLE_MAX}
               onChange={(e) => setExample(i, e.target.value)}
               aria-label={`Пример ${i + 1}`}
-              placeholder="toki pona li pona — токипона хороша"
+              placeholder="I love languages — я люблю языки"
             />
             {form.examples.length > 1 && (
               <Button variant="ghost" size="sm" onClick={() => setForm((f) => ({ ...f, examples: f.examples.filter((_, k) => k !== i) }))}>

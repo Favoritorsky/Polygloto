@@ -35,7 +35,7 @@
 
 .mine {
   border-color: var(--color-primary);
-  background: rgb(42 157 143 / 0.12);
+  background: var(--color-primary-tint);
   opacity: 1;
 }
 

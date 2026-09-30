@@ -17,7 +17,7 @@
 
 .headerRow input {
   font-weight: 700;
-  background: #fbfaf7;
+  background: var(--color-surface-subtle);
 }
 
 .control {
