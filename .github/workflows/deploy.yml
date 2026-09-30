@@ -73,11 +73,15 @@ jobs:
       # Деплой через REST API (не `firebase deploy`): см. комментарий в скрипте.
       - name: Деплой правил и сайта
         run: node scripts/deploy-firebase.mjs rules hosting
+      # Свой SMTP включается, только если Gmail принимает логин и пароль;
+      # иначе письма остаются на стандартной отправке Firebase.
       - name: Настройки писем Auth
         env:
           SMTP_USER: ${{ secrets.SMTP_USER }}
           SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-        run: node scripts/configure-auth.mjs
+        run: |
+          if python3 scripts/check-smtp.py; then export SMTP_OK=1; else export SMTP_OK=0; fi
+          node scripts/configure-auth.mjs
       - name: Назначение администратора
         env:
           ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
@@ -124,3 +128,9 @@ jobs:
           export GOOGLE_APPLICATION_CREDENTIALS="$RUNNER_TEMP/sa.json"
           npm ci
           node scripts/configure-auth.mjs --diagnose
+      - name: Проверка SMTP и тестовое письмо
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          ADMIN_EMAIL: ${{ secrets.ADMIN_EMAIL }}
+        run: python3 scripts/check-smtp.py --send || true

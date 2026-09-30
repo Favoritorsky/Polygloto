@@ -61,7 +61,7 @@ else console.log(`::warning::Не удалось обновить настрой
 
 const smtpUser = process.env.SMTP_USER?.trim();
 const smtpPassword = process.env.SMTP_PASSWORD?.replace(/\s+/g, '');
-if (smtpUser && smtpPassword) {
+if (smtpUser && smtpPassword && process.env.SMTP_OK !== '0') {
   const smtp = {
     senderEmail: smtpUser,
     host: process.env.SMTP_HOST?.trim() || 'smtp.gmail.com',
@@ -81,5 +81,12 @@ if (smtpUser && smtpPassword) {
     process.exit(1);
   }
 } else {
-  console.log('SMTP_USER/SMTP_PASSWORD не заданы — письма уходят со стандартного адреса Firebase.');
+  // Без рабочего SMTP возвращаем стандартную отправку Firebase, иначе письма не уходят вовсе.
+  const reason = smtpUser && smtpPassword ? 'Gmail не принял логин или пароль приложения' : 'SMTP_USER/SMTP_PASSWORD не заданы';
+  if (sendEmail.method === 'CUSTOM_SMTP') {
+    const back = await api('PATCH', `${configUrl}?updateMask=notification.sendEmail.method`, { notification: { sendEmail: { method: 'DEFAULT' } } });
+    if (!back.ok) throw new Error(`Не удалось вернуть стандартную отправку: ${back.status} ${JSON.stringify(back.data).slice(0, 300)}`);
+  }
+  const level = smtpUser && smtpPassword ? '::warning::' : '';
+  console.log(`${level}${reason} — письма уходят со стандартного адреса Firebase.`);
 }
