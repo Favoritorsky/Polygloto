@@ -2,7 +2,7 @@
 
 Печатает понятную причину ошибки, пароль не выводит. С --send отправляет
 тестовое письмо на ADMIN_EMAIL. Код выхода 0 — вход удался, 2 — секретов нет,
-1 — ошибка входа или отправки.
+1 — Gmail отклонил логин или пароль, 3 — не удалось подключиться.
 """
 import os
 import smtplib
@@ -19,22 +19,36 @@ if not user or not password:
 
 masked = user[0] + "***@" + user.split("@")[-1]
 print(f"Ящик: {masked}, длина пароля: {len(password)} (у пароля приложения Google — 16)")
-try:
-    with smtplib.SMTP_SSL(host, 465, context=ssl.create_default_context(), timeout=30) as smtp:
-        smtp.login(user, password)
-        print("Вход в SMTP: успешно.")
-        if "--send" in sys.argv:
-            to = (os.environ.get("ADMIN_EMAIL") or user).split(",")[0].strip()
-            msg = EmailMessage()
-            msg["From"] = f"Polygloto <{user}>"
-            msg["To"] = to
-            msg["Subject"] = "Polygloto: проверка отправки писем"
-            msg.set_content("Это тестовое письмо: отправка писем сайта Polygloto работает.")
-            smtp.send_message(msg)
-            print("Тестовое письмо отправлено на адрес администратора.")
-except smtplib.SMTPAuthenticationError as error:
-    print(f"Gmail отклонил вход ({error.smtp_code}): {error.smtp_error.decode(errors='replace')[:200]}")
-    sys.exit(1)
-except Exception as error:  # noqa: BLE001
-    print(f"Ошибка SMTP: {type(error).__name__}: {error}")
-    sys.exit(1)
+def connect(port):
+    context = ssl.create_default_context()
+    if port == 465:
+        return smtplib.SMTP_SSL(host, 465, context=context, timeout=30)
+    smtp = smtplib.SMTP(host, port, timeout=30)
+    smtp.starttls(context=context)
+    return smtp
+
+
+last_error = None
+for port in (465, 587):
+    try:
+        with connect(port) as smtp:
+            smtp.login(user, password)
+            print(f"Вход в SMTP через порт {port}: успешно.")
+            if "--send" in sys.argv:
+                to = (os.environ.get("ADMIN_EMAIL") or user).split(",")[0].strip()
+                msg = EmailMessage()
+                msg["From"] = f"Polygloto <{user}>"
+                msg["To"] = to
+                msg["Subject"] = "Polygloto: проверка отправки писем"
+                msg.set_content("Это тестовое письмо: отправка писем сайта Polygloto работает.")
+                smtp.send_message(msg)
+                print("Тестовое письмо отправлено на адрес администратора.")
+            sys.exit(0)
+    except smtplib.SMTPAuthenticationError as error:
+        print(f"Gmail отклонил вход ({error.smtp_code}): {error.smtp_error.decode(errors='replace')[:200]}")
+        sys.exit(1)
+    except Exception as error:  # noqa: BLE001
+        last_error = error
+        print(f"Порт {port}: {type(error).__name__}: {error}")
+print(f"Не удалось подключиться к {host}: {last_error}")
+sys.exit(3)
