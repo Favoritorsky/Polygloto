@@ -74,6 +74,9 @@ jobs:
       - name: Деплой правил и сайта
         run: node scripts/deploy-firebase.mjs rules hosting
       - name: Настройки писем Auth
+        env:
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
         run: node scripts/configure-auth.mjs
       - name: Назначение администратора
         env:

@@ -59,6 +59,10 @@ npm run dev:emu        # в другом терминале; фронтенд н
   Файл ключа никуда больше не кладите и не коммитьте.
 - `ADMIN_EMAIL` — email, с которым администратор регистрируется на сайте.
   Раз в час workflow проверяет, зарегистрировался ли он, и выдаёт роль admin.
+- `SMTP_USER` и `SMTP_PASSWORD` (необязательно) — адрес Gmail и пароль
+  приложения (Google Account → Security → 2-Step Verification → App passwords).
+  Тогда письма подтверждения уходят из этого ящика, а не с общего адреса
+  Firebase, и не попадают в «Спам». Настраивает `scripts/configure-auth.mjs`.
 
 ## Ручной деплой (если без GitHub Actions)
 
