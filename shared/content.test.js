@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { sanitizeBlocks, sanitizeCategories, sanitizeLeaf } from './content.js';
+import { sanitizeBlocks, sanitizeCategories, sanitizeLeaf, tableCellRole } from './content.js';
 
 describe('sanitizeLeaf', () => {
   it('оставляет только известные атрибуты', () => {
@@ -42,6 +42,7 @@ describe('sanitizeBlocks', () => {
     const [table] = sanitizeBlocks([{ type: 'table', rows: [{ cells: ['a', 'b'] }, { cells: ['c'] }, 'мусор'] }]);
     expect(table.rows).toEqual([{ cells: ['a', 'b'] }, { cells: ['c', ''] }, { cells: ['', ''] }]);
     expect(table.headerRow).toBe(true);
+    expect(table.headerColumn).toBe(false);
   });
 
   it('заголовок — только уровни 2 и 3', () => {
@@ -66,5 +67,33 @@ describe('sanitizeCategories', () => {
       { id: 'cat_a', name: 'Гласные', color: '#e63946' },
       { id: 'cat_c', name: 'Корень', color: '#1d3557' },
     ]);
+  });
+});
+
+describe('таблицы: заголовки по строке и по столбцу', () => {
+  const rows = [{ cells: ['', 'ед.', 'мн.'] }, { cells: ['1 л.', 'yo', 'nosotros'] }];
+
+  it('хранит оба флага как булевы значения, мусор не пропускает', () => {
+    const [both] = sanitizeBlocks([{ type: 'table', headerRow: true, headerColumn: true, rows }]);
+    expect(both).toMatchObject({ headerRow: true, headerColumn: true });
+    const [none] = sanitizeBlocks([{ type: 'table', headerRow: false, headerColumn: false, rows }]);
+    expect(none).toMatchObject({ headerRow: false, headerColumn: false });
+    const [junk] = sanitizeBlocks([{ type: 'table', headerRow: 'нет', headerColumn: 'да', rows }]);
+    expect(junk).toMatchObject({ headerRow: true, headerColumn: false });
+  });
+
+  it('роли ячеек во всех сочетаниях флагов', () => {
+    const roles = (headerRow, headerColumn) =>
+      [0, 1].map((r) => [0, 1].map((c) => tableCellRole({ headerRow, headerColumn }, r, c)));
+    expect(roles(true, true)).toEqual([['corner', 'column'], ['row', 'cell']]);
+    expect(roles(true, false)).toEqual([['column', 'column'], ['cell', 'cell']]);
+    expect(roles(false, true)).toEqual([['row', 'cell'], ['row', 'cell']]);
+    expect(roles(false, false)).toEqual([['cell', 'cell'], ['cell', 'cell']]);
+  });
+
+  it('таблица 1×1 с обоими флагами — одна угловая ячейка; старые таблицы без флага — заголовок-строка', () => {
+    expect(tableCellRole({ headerRow: true, headerColumn: true }, 0, 0)).toBe('corner');
+    expect(tableCellRole({}, 0, 0)).toBe('column');
+    expect(tableCellRole({}, 1, 0)).toBe('cell');
   });
 });

@@ -146,6 +146,18 @@ describe('courses: правка контента', () => {
     await assertFails(updateDoc(doc(as(env, 'alice'), 'courses/pending'), edit()));
     await assertFails(updateDoc(doc(as(env, 'alice'), 'courses/pub'), edit()));
   });
+
+  it('урок с таблицей с заголовками по строке и по столбцу сохраняется', async () => {
+    const table = {
+      type: 'table',
+      headerRow: true,
+      headerColumn: true,
+      rows: [{ cells: ['', 'ед. ч.'] }, { cells: ['1 л.', 'yo'] }],
+    };
+    const ref = doc(as(env, 'alice'), 'courses/c1/lessons/l1');
+    await assertSucceeds(setDoc(ref, { title: 'Урок 1', blocks: [table], updatedAt: serverTimestamp() }));
+    await assertFails(setDoc(doc(as(env, 'bob'), 'courses/c1/lessons/l1'), { title: 'Урок 1', blocks: [table], updatedAt: serverTimestamp() }));
+  });
 });
 
 describe('courses: переходы статуса', () => {

@@ -15,9 +15,18 @@
   padding: 0.3rem 0.45rem;
 }
 
-.headerRow input {
+.header input {
   font-weight: 700;
+  background: var(--color-surface-muted);
+}
+
+/* Угловая ячейка при обоих заголовках: служебная подпись, не заголовок. */
+.corner input {
+  font-style: italic;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
   background: var(--color-surface-subtle);
+  border-style: dashed;
 }
 
 .control {

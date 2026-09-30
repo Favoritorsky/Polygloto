@@ -1,9 +1,16 @@
-import { CONTENT_LIMITS } from '../../../../shared/content.js';
+import { CONTENT_LIMITS, tableCellRole } from '../../../../shared/content.js';
 import { useUpdateElement } from './useUpdateElement.js';
 import VoidBlockFrame from './VoidBlockFrame.jsx';
 import styles from './TableElementEditor.module.css';
 
-/** Редактор таблицы: ячейки — обычные поля ввода, строки/столбцы добавляются и удаляются кнопками. */
+const ROLE_CLASS = { corner: styles.corner, column: styles.header, row: styles.header, cell: undefined };
+const ROLE_LABEL = { corner: 'угловая ячейка', column: 'заголовок столбца', row: 'заголовок строки', cell: 'ячейка' };
+
+/**
+ * Редактор таблицы: ячейки — обычные поля ввода, строки/столбцы добавляются и удаляются кнопками.
+ * Заголовки задаются двумя независимыми флагами (headerRow, headerColumn) и привязаны к позиции:
+ * первая строка и первый столбец, поэтому добавление и удаление строк их не сбивает.
+ */
 export default function TableElementEditor({ attributes, children, element, readOnly }) {
   const update = useUpdateElement(element);
   const rows = element.rows ?? [{ cells: [''] }];
@@ -35,18 +42,21 @@ export default function TableElementEditor({ attributes, children, element, read
               </tr>
             )}
             {rows.map((row, r) => (
-              <tr key={r} className={r === 0 && element.headerRow !== false ? styles.headerRow : undefined}>
-                {row.cells.map((cell, c) => (
-                  <td key={c}>
-                    <input
-                      value={cell}
-                      maxLength={CONTENT_LIMITS.TABLE_CELL_MAX}
-                      onChange={(e) => setCell(r, c, e.target.value)}
-                      readOnly={readOnly}
-                      aria-label={`Ячейка ${r + 1}:${c + 1}`}
-                    />
-                  </td>
-                ))}
+              <tr key={r}>
+                {row.cells.map((cell, c) => {
+                  const role = tableCellRole(element, r, c);
+                  return (
+                    <td key={c} className={ROLE_CLASS[role]} data-role={role}>
+                      <input
+                        value={cell}
+                        maxLength={CONTENT_LIMITS.TABLE_CELL_MAX}
+                        onChange={(e) => setCell(r, c, e.target.value)}
+                        readOnly={readOnly}
+                        aria-label={`Ячейка ${r + 1}:${c + 1}, ${ROLE_LABEL[role]}`}
+                      />
+                    </td>
+                  );
+                })}
                 {!readOnly && (
                   <td className={styles.control}>
                     <button type="button" onClick={() => removeRow(r)} disabled={rows.length === 1} title="Удалить строку">
@@ -74,6 +84,14 @@ export default function TableElementEditor({ attributes, children, element, read
               onChange={(e) => update({ headerRow: e.target.checked })}
             />
             Первая строка — заголовок
+          </label>
+          <label className={styles.toggle}>
+            <input
+              type="checkbox"
+              checked={element.headerColumn === true}
+              onChange={(e) => update({ headerColumn: e.target.checked })}
+            />
+            Первый столбец — заголовок
           </label>
         </div>
       )}

@@ -73,9 +73,28 @@ function sanitizeTable(block) {
   });
   return {
     type: BLOCK_TYPES.TABLE,
+    // Старые таблицы без флага: первая строка — заголовок (так было в v1).
     headerRow: block.headerRow !== false,
+    headerColumn: block.headerColumn === true,
     rows: cleanRows.length ? cleanRows : [{ cells: [''] }],
   };
+}
+
+/**
+ * Роль ячейки таблицы для оформления (одна логика для редактора и читателя):
+ *  - 'corner' — пересечение строки и столбца заголовков (оба флага включены);
+ *  - 'column' — заголовок столбца (первая строка при headerRow);
+ *  - 'row' — заголовок строки (первый столбец при headerColumn);
+ *  - 'cell' — обычная ячейка.
+ * Заголовки позиционные: при удалении первой строки заголовком становится следующая.
+ */
+export function tableCellRole(table, rowIndex, colIndex) {
+  const inHeaderRow = table.headerRow !== false && rowIndex === 0;
+  const inHeaderColumn = table.headerColumn === true && colIndex === 0;
+  if (inHeaderRow && inHeaderColumn) return 'corner';
+  if (inHeaderRow) return 'column';
+  if (inHeaderColumn) return 'row';
+  return 'cell';
 }
 
 /** Очищает один блок; неизвестные/зарезервированные типы отбрасываются (null). */

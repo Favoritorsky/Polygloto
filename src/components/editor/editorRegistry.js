@@ -20,6 +20,7 @@ export const insertables = [
     create: () => ({
       type: BLOCK_TYPES.TABLE,
       headerRow: true,
+      headerColumn: false,
       rows: [{ cells: ['Слово', 'Перевод'] }, { cells: ['', ''] }],
     }),
   },

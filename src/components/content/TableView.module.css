@@ -21,3 +21,22 @@
   background: var(--color-surface-muted);
   font-weight: 700;
 }
+
+/* Заголовок строки (первый столбец) отделён от данных чуть толще. */
+.table th[scope='row'] {
+  border-right-width: 2px;
+}
+
+.table thead th,
+.table thead td {
+  border-bottom-width: 2px;
+}
+
+/* Угловая ячейка: служебная подпись («Падеж \ Лицо») или пустое место, не заголовок. */
+.table .corner {
+  background: var(--color-surface-subtle);
+  color: var(--color-text-muted);
+  font-size: 0.85em;
+  font-style: italic;
+  border-right-width: 2px;
+}
