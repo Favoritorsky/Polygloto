@@ -11,10 +11,13 @@ function Cell({ role, children }) {
 
 /** Таблица только для чтения: заголовки в первой строке и/или в первом столбце. */
 export default function TableView({ block }) {
-  const hasHeaderRow = block.headerRow !== false && block.rows.length > 0;
+  const filled = (row) => row.cells.some((cell) => cell.trim());
   const indexed = block.rows.map((row, index) => ({ row, index }));
-  // Полностью пустые строки (заготовки автора) читателю не показываем.
-  const body = (hasHeaderRow ? indexed.slice(1) : indexed).filter(({ row }) => row.cells.some((cell) => cell.trim()));
+  const hasHeaderRow = block.headerRow !== false && block.rows.length > 0;
+  // Полностью пустые строки (заготовки автора) читателю не показываем, пустую строку заголовков тоже.
+  const showHeader = hasHeaderRow && filled(block.rows[0]);
+  const body = (hasHeaderRow ? indexed.slice(1) : indexed).filter(({ row }) => filled(row));
+  if (!showHeader && body.length === 0) return null;
   const renderRow = ({ row, index }) => (
     <tr key={index}>
       {row.cells.map((cell, c) => (
@@ -27,7 +30,7 @@ export default function TableView({ block }) {
   return (
     <div className={styles.scroll}>
       <table className={styles.table}>
-        {hasHeaderRow && <thead>{renderRow(indexed[0])}</thead>}
+        {showHeader && <thead>{renderRow(indexed[0])}</thead>}
         <tbody>{body.map(renderRow)}</tbody>
       </table>
     </div>

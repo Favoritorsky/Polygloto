@@ -68,3 +68,10 @@
 .toggle input {
   width: auto;
 }
+
+.table input::placeholder {
+  color: var(--color-text-muted);
+  opacity: 0.6;
+  font-weight: 400;
+  font-style: italic;
+}

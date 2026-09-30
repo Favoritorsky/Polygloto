@@ -21,7 +21,8 @@ export const insertables = [
       type: BLOCK_TYPES.TABLE,
       headerRow: true,
       headerColumn: false,
-      rows: [{ cells: ['Слово', 'Перевод'] }, { cells: ['', ''] }],
+      // Пустая 2×2: подсказки в ячейках — плейсхолдеры полей, в данные не попадают.
+      rows: [{ cells: ['', ''] }, { cells: ['', ''] }],
     }),
   },
 ];

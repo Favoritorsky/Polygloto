@@ -4,6 +4,7 @@ import VoidBlockFrame from './VoidBlockFrame.jsx';
 import styles from './TableElementEditor.module.css';
 
 const ROLE_CLASS = { corner: styles.corner, column: styles.header, row: styles.header, cell: undefined };
+const ROLE_PLACEHOLDER = { corner: 'угол, можно пусто', column: 'заголовок…', row: 'заголовок…', cell: 'текст…' };
 const ROLE_LABEL = { corner: 'угловая ячейка', column: 'заголовок столбца', row: 'заголовок строки', cell: 'ячейка' };
 
 /**
@@ -49,6 +50,7 @@ export default function TableElementEditor({ attributes, children, element, read
                     <td key={c} className={ROLE_CLASS[role]} data-role={role}>
                       <input
                         value={cell}
+                        placeholder={readOnly ? undefined : ROLE_PLACEHOLDER[role]}
                         maxLength={CONTENT_LIMITS.TABLE_CELL_MAX}
                         onChange={(e) => setCell(r, c, e.target.value)}
                         readOnly={readOnly}

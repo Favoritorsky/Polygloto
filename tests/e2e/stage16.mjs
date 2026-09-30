@@ -33,6 +33,12 @@ try {
   const headerCol = page.getByLabel('Первый столбец — заголовок');
 
   assert((await roles(2, 2)) === 'column column / cell cell', 'по умолчанию заголовок — первая строка');
+
+  // Задача 3: новая таблица пустая 2×2, подсказки только в плейсхолдерах.
+  const values = await page.locator('td[data-role] input').evaluateAll((els) => els.map((e) => e.value));
+  assert(values.length === 4 && values.every((v) => v === ''), `новая таблица пустая 2×2 (${JSON.stringify(values)})`);
+  const placeholders = await page.locator('td[data-role] input').evaluateAll((els) => els.map((e) => e.placeholder));
+  assert(placeholders.join('|') === 'заголовок…|заголовок…|текст…|текст…', `плейсхолдеры по ролям (${placeholders.join('|')})`);
   await headerCol.check();
   assert((await roles(2, 2)) === 'corner column / row cell', 'оба флага: угловая ячейка, заголовки строки и столбца');
   await headerRow.uncheck();
