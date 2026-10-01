@@ -17,6 +17,7 @@ import ReviewPage from './pages/review/ReviewPage.jsx';
 import ProgressPage from './pages/progress/ProgressPage.jsx';
 import LeaderboardPage from './pages/leaderboard/LeaderboardPage.jsx';
 import GamesPage from './pages/games/GamesPage.jsx';
+import FeedPage from './pages/feed/FeedPage.jsx';
 import ProfilePage from './pages/profile/ProfilePage.jsx';
 import CoursePage from './pages/course/CoursePage.jsx';
 import CourseEditorPage from './pages/editor/CourseEditorPage.jsx';
@@ -90,6 +91,14 @@ export default function App() {
             }
           />
           <Route path="leaderboard" element={<LeaderboardPage />} />
+          <Route
+            path="feed"
+            element={
+              <RequireAuth>
+                <FeedPage />
+              </RequireAuth>
+            }
+          />
           <Route path="catalog" element={<CatalogPage />} />
           <Route path="demo" element={<DemoCoursePage />} />
           <Route path="course/:courseId" element={<CoursePage />} />

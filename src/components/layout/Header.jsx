@@ -35,6 +35,11 @@ export default function Header() {
             Каталог
           </NavLink>
           {user && (
+            <NavLink to="/feed" className={navClass}>
+              Лента
+            </NavLink>
+          )}
+          {user && (
             <NavLink to="/my-courses" className={navClass}>
               Мои курсы
             </NavLink>

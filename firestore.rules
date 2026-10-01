@@ -318,6 +318,23 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // ---------- follows/{followerId}_{authorId} — подписки на авторов (v2) ----------
+    // Видны всем (число подписчиков в профиле). Подписаться и отписаться может
+    // только сам подписчик; на себя — нельзя. Документ не меняется.
+    match /follows/{followId} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.keys().hasOnly(['followerId', 'authorId', 'createdAt'])
+        && request.resource.data.followerId == request.auth.uid
+        && request.resource.data.authorId is string
+        && request.resource.data.authorId != request.auth.uid
+        && followId == request.auth.uid + '_' + request.resource.data.authorId
+        && exists(userPath(request.resource.data.authorId))
+        && request.resource.data.createdAt == request.time;
+      allow update: if false;
+      allow delete: if signedIn() && resource.data.followerId == request.auth.uid;
+    }
+
     // ---------- rateLimits/{uid} ----------
     // Отметки времени последних действий. Обновляются в одной пакетной записи
     // с самим действием; правила курса и комментария требуют, чтобы отметка

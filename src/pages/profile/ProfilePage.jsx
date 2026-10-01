@@ -1,3 +1,4 @@
+import FollowButton from '../../components/follow/FollowButton.jsx';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import CourseCard from '../../components/course/CourseCard.jsx';
@@ -62,6 +63,7 @@ export default function ProfilePage() {
                   <div className={styles.identity}>
                     <h1 className={styles.name}>{profile.data.displayName}</h1>
                     {since && <p className={styles.muted}>На Polygloto с {since}</p>}
+                    <FollowButton authorId={uid} />
                     {profile.data.bio ? (
                       <p className={styles.bio}>{profile.data.bio}</p>
                     ) : (

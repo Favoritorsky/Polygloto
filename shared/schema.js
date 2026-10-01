@@ -19,6 +19,7 @@ export const COLLECTIONS = Object.freeze({
   COMMENT_AUTHORS: 'commentAuthors',
   USER_STATS: 'userStats',
   LEADERBOARDS: 'leaderboards',
+  FOLLOWS: 'follows',
 });
 
 /** catalogMeta/languages — список языков опубликованных курсов (обновляет админ при одобрении). */
