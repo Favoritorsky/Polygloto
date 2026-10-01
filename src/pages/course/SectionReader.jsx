@@ -6,6 +6,7 @@ import Alert from '../../components/ui/Alert.jsx';
 import AsyncState from '../../components/ui/AsyncState.jsx';
 import Button from '../../components/ui/Button.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
+import { recordFirstAttempt } from '../../services/taskStatsService.js';
 import { useReactions } from '../../hooks/useReactions.js';
 import { useAsync, useSubscription } from '../../hooks/useSubscription.js';
 import { toUserMessage } from '../../services/errors.js';
@@ -53,6 +54,17 @@ export default function SectionReader({ kind }) {
   const completed = progress.data ?? new Set();
   const reactions = useReactions(course.id, 'lesson', kind === 'lessons' && current ? [current.id] : [], user?.uid);
 
+  // Первая попытка каждого задания идёт в статистику автора (только суммы).
+  const uid = user?.uid;
+  const lessonId = current?.id;
+  const onTaskChecked = useCallback(
+    (block, blockIndex, correct) => {
+      if (!uid || !block.id) return;
+      recordFirstAttempt(uid, { courseId: course.id, lessonId, taskId: block.id, blockIndex, correct }).catch(() => {});
+    },
+    [uid, course.id, lessonId],
+  );
+
   async function handleReaction(emoji) {
     setReactionError('');
     try {
@@ -99,6 +111,7 @@ export default function SectionReader({ kind }) {
               dictionary={dictionary.index}
               courseId={course.id}
               review={review}
+              onTaskChecked={kind === 'lessons' ? onTaskChecked : null}
             />
           )}
         </AsyncState>

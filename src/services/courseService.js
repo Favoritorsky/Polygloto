@@ -145,7 +145,7 @@ export async function deleteCourse(courseId) {
   if (isPublished) {
     await deleteAllDocs(collection(course, SUBCOLLECTIONS.COMMENTS), deleteCommentInBatch);
     await deleteAllDocs(collection(course, SUBCOLLECTIONS.REACTIONS));
-    for (const name of [...CONTENT_SUBCOLLECTIONS, SUBCOLLECTIONS.AUDIO]) await deleteAllDocs(collection(publicRef, name));
+    for (const name of [...CONTENT_SUBCOLLECTIONS, SUBCOLLECTIONS.AUDIO, SUBCOLLECTIONS.TASK_STATS]) await deleteAllDocs(collection(publicRef, name));
     await deleteDoc(publicRef);
   }
   for (const name of [...CONTENT_SUBCOLLECTIONS, SUBCOLLECTIONS.AUDIO]) await deleteAllDocs(collection(course, name));

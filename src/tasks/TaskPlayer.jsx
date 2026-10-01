@@ -1,4 +1,5 @@
 import { useId, useState } from 'react';
+import { useContentContext } from '../components/content/contentContext.js';
 import Button from '../components/ui/Button.jsx';
 import { getTaskType } from './taskTypeRegistry.js';
 import styles from './TaskPlayer.module.css';
@@ -7,8 +8,9 @@ import styles from './TaskPlayer.module.css';
  * Прохождение задания: общий «каркас» (Проверить / Ещё раз / обратная связь)
  * вокруг Player конкретного типа из реестра.
  */
-export default function TaskPlayer({ block }) {
+export default function TaskPlayer({ block, index }) {
   const type = getTaskType(block.taskType);
+  const { onTaskChecked } = useContentContext();
   const [answer, setAnswer] = useState(null);
   const [result, setResult] = useState(null);
   const name = useId();
@@ -24,7 +26,9 @@ export default function TaskPlayer({ block }) {
   function handleCheck(event) {
     event.preventDefault();
     if (!complete) return;
-    setResult(type.check(block.data, answer));
+    const checked = type.check(block.data, answer);
+    setResult(checked);
+    onTaskChecked?.(block, index, checked.correct);
   }
 
   function handleRetry() {

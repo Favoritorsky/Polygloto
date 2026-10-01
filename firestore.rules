@@ -167,6 +167,30 @@ service cloud.firestore {
           && request.resource.data.completedAt == request.time;
         allow update: if false;
       }
+
+      // ---------- users/{uid}/taskResults/{courseId_lessonId_taskId} — первая попытка (v2) ----------
+      // Отметка создаётся один раз и не меняется и не удаляется: так каждый
+      // читатель увеличивает статистику задания (taskStats) ровно на одну попытку.
+      // Задание проверяется по опубликованному уроку: blocks[blockIndex] — это оно.
+      function validTaskResult(resultId, d) {
+        let lesson = /databases/$(database)/documents/publicCourses/$(d.courseId)/lessons/$(d.lessonId);
+        return d.keys().hasOnly(['courseId', 'lessonId', 'taskId', 'blockIndex', 'correct', 'createdAt'])
+          && d.courseId is string && d.lessonId is string && d.taskId is string
+          && resultId == d.courseId + '_' + d.lessonId + '_' + d.taskId
+          && d.blockIndex is int && d.blockIndex >= 0 && d.blockIndex < 400
+          && d.correct is bool
+          && d.createdAt == request.time
+          && exists(lesson)
+          && get(lesson).data.blocks.size() > d.blockIndex
+          && get(lesson).data.blocks[d.blockIndex].type == 'task'
+          && get(lesson).data.blocks[d.blockIndex].get('id', null) == d.taskId;
+      }
+
+      match /taskResults/{resultId} {
+        allow read: if isSelf(uid);
+        allow create: if isSelf(uid) && validTaskResult(resultId, request.resource.data);
+        allow update, delete: if false;
+      }
     }
 
     // ---------- rateLimits/{uid} ----------
@@ -517,6 +541,33 @@ service cloud.firestore {
 
       // Снять с публикации может автор (при удалении курса) и админ.
       allow delete: if signedIn() && (resource.data.authorId == request.auth.uid || isAdmin());
+
+      // Статистика заданий (v2): только суммы по всем читателям, без имён.
+      // Увеличить можно ровно на одну попытку и только вместе с созданием своей
+      // отметки первой попытки (users/{uid}/taskResults) в той же записи.
+      function isPublicOwner() {
+        return signedIn() && (isAdmin() || get(publicPath(courseId)).data.authorId == request.auth.uid);
+      }
+
+      function isTaskStatIncrement(statId) {
+        let d = request.resource.data;
+        let marker = /databases/$(database)/documents/users/$(request.auth.uid)/taskResults/$(courseId + '_' + d.lessonId + '_' + d.taskId);
+        let attemptsBefore = resource == null ? 0 : resource.data.attempts;
+        let wrongBefore = resource == null ? 0 : resource.data.wrong;
+        return signedIn()
+          && d.keys().hasOnly(['lessonId', 'taskId', 'attempts', 'wrong'])
+          && d.lessonId is string && d.taskId is string
+          && statId == d.lessonId + '_' + d.taskId
+          && !exists(marker) && existsAfter(marker)
+          && d.attempts == attemptsBefore + 1
+          && d.wrong == wrongBefore + (getAfter(marker).data.correct ? 0 : 1);
+      }
+
+      match /taskStats/{statId} {
+        allow read: if isPublicOwner();
+        allow create, update: if isTaskStatIncrement(statId);
+        allow delete: if isPublicOwner();
+      }
 
       match /{section}/{docId} {
         allow read: if section in ['lessons', 'reference', 'dictionary', 'audio'];

@@ -17,6 +17,7 @@ import { CourseEditorContext } from './courseEditorContext.js';
 import DictionaryTab from './DictionaryTab.jsx';
 import SectionsTab from './SectionsTab.jsx';
 import SettingsTab from './SettingsTab.jsx';
+import StatsTab from './StatsTab.jsx';
 import StatusPanel from './StatusPanel.jsx';
 import styles from './CourseEditorPage.module.css';
 
@@ -24,6 +25,7 @@ const TABS = [
   { id: 'lessons', label: 'Самоучитель' },
   { id: 'reference', label: 'Справочник' },
   { id: 'dictionary', label: 'Словарь' },
+  { id: 'stats', label: 'Статистика' },
   { id: 'settings', label: 'Настройки курса' },
 ];
 
@@ -174,6 +176,7 @@ export default function CourseEditorPage() {
               {tab === 'lessons' && <SectionsTab kind="lessons" key="lessons" />}
               {tab === 'reference' && <SectionsTab kind="reference" key="reference" />}
               {tab === 'dictionary' && <DictionaryTab />}
+              {tab === 'stats' && <StatsTab />}
               {tab === 'settings' && <SettingsTab />}
             </AudioSourceProvider>
           </CourseEditorContext.Provider>

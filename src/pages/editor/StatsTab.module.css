@@ -1,0 +1,73 @@
+.muted {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.lesson {
+  margin-top: 1.25rem;
+}
+
+.lesson h3,
+.hardest h3 {
+  font-size: 1rem;
+  margin: 0 0 0.5rem;
+}
+
+.hardest {
+  background: var(--color-warning-bg, var(--color-surface));
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 0.75rem 1rem;
+  margin-top: 1rem;
+}
+
+.hardest ol {
+  margin: 0;
+  padding-left: 1.25rem;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: 0.45rem 0.5rem;
+  border-bottom: 1px solid var(--color-border);
+  vertical-align: top;
+}
+
+.table th:nth-child(2),
+.table td:nth-child(2) {
+  width: 6rem;
+}
+
+.table th:nth-child(3),
+.table td:nth-child(3) {
+  width: 11rem;
+}
+
+.kind {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.bar {
+  display: inline-block;
+  min-width: 3rem;
+  padding: 0.1rem 0.4rem;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(90deg, var(--color-danger-bg) var(--percent), transparent var(--percent));
+  border: 1px solid var(--color-border);
+}
+
+@media (max-width: 600px) {
+  .table th:nth-child(3),
+  .table td:nth-child(3) {
+    width: auto;
+  }
+}

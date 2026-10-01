@@ -28,6 +28,7 @@ export const SUBCOLLECTIONS = Object.freeze({
   REFERENCE: 'reference',
   DICTIONARY: 'dictionary',
   AUDIO: 'audio',
+  TASK_STATS: 'taskStats',
   COMMENTS: 'comments',
   REACTIONS: 'reactions',
   RATINGS: 'ratings',
@@ -36,6 +37,7 @@ export const SUBCOLLECTIONS = Object.freeze({
 /** Личные подколлекции users/{uid} (видит только владелец). */
 export const USER_SUBCOLLECTIONS = Object.freeze({
   SRS_CARDS: 'srsCards',
+  TASK_RESULTS: 'taskResults',
   LESSON_PROGRESS: 'lessonProgress',
 });
 
