@@ -65,7 +65,7 @@ export default function StatusPanel() {
     notice = (
       <Alert
         tone="info"
-        title={course.hasPublishedVersion ? 'Есть несогласованные изменения' : 'Черновик'}
+        title={course.hasPublishedVersion ? 'Есть изменения, ещё не прошедшие проверку' : 'Черновик'}
         action={submitButton}
       >
         {course.hasPublishedVersion

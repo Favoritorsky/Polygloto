@@ -8,7 +8,7 @@ try {
   const page = await newPage(browser);
   await page.goto(BASE);
   await page.getByRole('heading', { level: 1 }).waitFor();
-  for (const title of ['Попробуйте прямо здесь', 'Для кого Polygloto', 'Чем это лучше самоучителя в PDF', 'Как стать автором', 'Популярные курсы']) {
+  for (const title of ['Попробуйте прямо здесь', 'Для кого Polygloto', 'Чем это лучше самоучителя в PDF', 'Как стать автором', 'Курсы в каталоге']) {
     assert(await page.getByRole('heading', { name: title }).isVisible(), `раздел «${title}»`);
   }
 
@@ -26,8 +26,8 @@ try {
   await page.goto(BASE);
   await page.getByRole('heading', { level: 1 }).waitFor();
 
-  await page.locator('section', { has: page.getByRole('heading', { name: 'Популярные курсы' }) }).locator('article').first().waitFor();
-  const cards = await page.locator('section', { has: page.getByRole('heading', { name: 'Популярные курсы' }) }).locator('article').count();
+  await page.locator('section', { has: page.getByRole('heading', { name: 'Курсы в каталоге' }) }).locator('article').first().waitFor();
+  const cards = await page.locator('section', { has: page.getByRole('heading', { name: 'Курсы в каталоге' }) }).locator('article').count();
   assert(cards > 0 && cards <= 6, `витрина показывает до 6 курсов (${cards})`);
   if (shots) await page.screenshot({ path: `${shots}/home-desktop.png`, fullPage: true });
 
@@ -45,7 +45,7 @@ try {
   // Телефон: без горизонтальной прокрутки.
   const mobile = await browser.newPage({ viewport: { width: 375, height: 800 } });
   await mobile.goto(BASE);
-  await mobile.getByRole('heading', { name: 'Популярные курсы' }).waitFor();
+  await mobile.getByRole('heading', { name: 'Курсы в каталоге' }).waitFor();
   const overflow = await mobile.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
   assert(overflow <= 0, `на ширине 375px нет горизонтальной прокрутки (${overflow}px)`);
   if (shots) await mobile.screenshot({ path: `${shots}/home-mobile.png`, fullPage: true });

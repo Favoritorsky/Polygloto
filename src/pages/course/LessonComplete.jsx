@@ -9,7 +9,7 @@ import { plural } from '../../model/plural.js';
 import styles from './LessonComplete.module.css';
 
 /**
- * Конец урока: «Урок пройден» — отметка в прогрессе и все слова урока из
+ * Конец урока: «Отметить урок пройденным» — отметка в прогрессе и все слова урока из
  * словаря курса в личное повторение. Повторное нажатие добавит только новые слова.
  */
 export default function LessonComplete({ uid, courseId, lessonId, blocks, dictionaryIndex, completed }) {
@@ -59,7 +59,7 @@ export default function LessonComplete({ uid, courseId, lessonId, blocks, dictio
       {mine.error && <Alert tone="error">{mine.error}</Alert>}
       {!mine.result && (
         <Button onClick={handleComplete} loading={mine.saving} variant={completed ? 'secondary' : 'primary'}>
-          {completed ? 'Добавить слова урока в повторение' : 'Урок пройден'}
+          {completed ? 'Добавить слова урока в повторение' : 'Отметить урок пройденным'}
         </Button>
       )}
     </div>

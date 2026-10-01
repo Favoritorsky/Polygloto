@@ -35,7 +35,7 @@ try {
   // Урок пройден → слова урока в повторении.
   await page.goto(`${BASE}/course/${courseId}`);
   await page.getByText('В уроке 2 слова из словаря курса').waitFor();
-  await page.getByRole('button', { name: 'Урок пройден' }).click();
+  await page.getByRole('button', { name: 'Отметить урок пройденным' }).click();
   await page.getByText('В повторение добавлено 2 слова').waitFor();
   assert(true, 'урок пройден: 2 слова добавлены');
   await page.getByRole('navigation', { name: 'Уроки' }).getByLabel('пройден').waitFor();

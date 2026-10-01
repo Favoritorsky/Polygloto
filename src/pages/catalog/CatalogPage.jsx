@@ -121,7 +121,7 @@ export default function CatalogPage() {
         onRetry={page.retry}
         loadingLabel="Ищем курсы…"
         empty={items.length === 0 && !emptyButMore}
-        emptyText={filtered ? 'По этому запросу ничего не нашлось. Попробуйте другое слово или сбросьте фильтры.' : 'Опубликованных курсов пока нет.'}
+        emptyText={filtered ? 'По этому запросу ничего не нашлось. Попробуйте другое слово или сбросьте фильтры.' : 'Каталог только начинает наполняться: опубликованных курсов пока нет. Ваш может стать одним из первых.'}
       >
         {items.length > 0 && (
           <ul className={styles.grid}>
@@ -132,7 +132,7 @@ export default function CatalogPage() {
             ))}
           </ul>
         )}
-        {emptyButMore && <p className={styles.muted}>Среди первых курсов совпадений нет.</p>}
+        {emptyButMore && <p className={styles.muted}>Среди уже загруженных курсов совпадений нет.</p>}
         {moreError && <Alert tone="error">{moreError}</Alert>}
         {page.data?.hasMore && (
           <div className={styles.more}>

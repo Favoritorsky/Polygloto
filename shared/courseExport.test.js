@@ -95,7 +95,7 @@ describe('импорт', () => {
       }),
     );
     expect(data.audio).toEqual([]);
-    expect(data.warnings.join(' ')).toMatch(/Нет в файле аудиозаписей: 1/);
+    expect(data.warnings.join(' ')).toMatch(/не хватает аудиозаписей: 1/);
   });
   it('лимиты: лишние уроки обрезаются', () => {
     const many = Array.from({ length: 205 }, (_, i) => ({ title: `У${i}`, blocks: [] }));

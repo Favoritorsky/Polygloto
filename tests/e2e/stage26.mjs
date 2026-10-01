@@ -46,10 +46,10 @@ try {
   await task.getByRole('button', { name: 'Проверить' }).click();
 
   // Оба урока пройдены → +40 и отметка «курс пройден»
-  await page.getByRole('button', { name: 'Урок пройден' }).click();
+  await page.getByRole('button', { name: 'Отметить урок пройденным' }).click();
   await page.getByText(/В повторение добавлено|Новых слов/).waitFor();
   await page.getByRole('button', { name: 'Второй →' }).click();
-  await page.getByRole('button', { name: 'Урок пройден' }).click();
+  await page.getByRole('button', { name: 'Отметить урок пройденным' }).click();
   await page.getByText(/В повторение добавлено|Новых слов/).waitFor();
   for (let i = 0; i < 20 && !(await adminDb.doc(`users/${uid}/completedCourses/${courseId}`).get()).exists; i += 1) {
     await new Promise((r) => setTimeout(r, 250));

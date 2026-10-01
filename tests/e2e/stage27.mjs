@@ -80,7 +80,7 @@ try {
     .filter({ hasNotText: translationOf.get(word) })
     .first();
   await wrong.click();
-  await speed.getByText(`Было: ${word} — ${translationOf.get(word)}`).waitFor();
+  await speed.getByText(`Правильно: ${word} — ${translationOf.get(word)}`).waitFor();
   assert(true, 'после ошибки показан правильный перевод');
   await speed.getByText('Верно: 5').waitFor();
   // с клавиатуры: цифра варианта

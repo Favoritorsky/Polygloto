@@ -74,7 +74,7 @@ try {
 
   // Правка опубликованного: новая версия-черновик
   await author.getByRole('textbox', { name: 'Название', exact: true }).fill('Урок 1: приветствия');
-  await author.getByText('Есть несогласованные изменения').waitFor({ timeout: 10000 });
+  await author.getByText('Есть изменения, ещё не прошедшие проверку').waitFor({ timeout: 10000 });
   assert(true, 'правка опубликованного курса создала черновик новой версии');
 
   const res = await fetch(`http://127.0.0.1:8080/v1/projects/demo-polygloto/databases/(default)/documents/publicCourses/${courseId}/lessons`, {

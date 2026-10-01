@@ -44,7 +44,7 @@ export default function GamesPage() {
             <h1>Мини-игры</h1>
             {!enough ? (
               <p className={styles.muted}>
-                Для игр нужно хотя бы {GAME_LIMITS.MIN_WORDS} слова с разными переводами в словаре курса, а сейчас их {words.length}.
+                Для игр нужно хотя бы {GAME_LIMITS.MIN_WORDS} слова с разными переводами в словаре курса, а подходящих слов сейчас {words.length}.
               </p>
             ) : (
               <>

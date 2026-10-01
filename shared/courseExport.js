@@ -122,7 +122,7 @@ export function parseCourseImport(text) {
     return ok;
   });
   const missing = [...used].filter((id) => !audioSeen.has(id)).length;
-  if (missing) warnings.push(`Нет в файле аудиозаписей: ${missing}; эти места останутся без звука.`);
+  if (missing) warnings.push(`В файле не хватает аудиозаписей: ${missing}. Там, где они нужны, звука не будет.`);
 
   return {
     data: {

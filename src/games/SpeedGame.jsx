@@ -72,7 +72,7 @@ export default function SpeedGame({ courseId, entries }) {
             Осталось: {left} с · Верно: {game.score}
           </>
         ) : (
-          <>Выберите перевод как можно большего числа слов за {GAME_LIMITS.SPEED_SECONDS} секунд.</>
+          <>За {GAME_LIMITS.SPEED_SECONDS} секунд переведите как можно больше слов: выбирайте верный вариант.</>
         )}
         {best !== null && <> · Рекорд: {best}</>}
       </p>
@@ -86,7 +86,7 @@ export default function SpeedGame({ courseId, entries }) {
               </button>
             ))}
           </div>
-          {game.last && !game.last.correct && <p className={styles.miss}>Было: {game.last.text}</p>}
+          {game.last && !game.last.correct && <p className={styles.miss}>Правильно: {game.last.text}</p>}
         </>
       )}
       {game.status === 'over' && (
