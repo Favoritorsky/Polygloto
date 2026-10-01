@@ -13,9 +13,9 @@ import {
   onSnapshot,
   orderBy,
   query,
+  runTransaction,
   serverTimestamp,
   Timestamp,
-  updateDoc,
   where,
   writeBatch,
 } from 'firebase/firestore';
@@ -23,6 +23,7 @@ import { COLLECTIONS, USER_SUBCOLLECTIONS } from '../../shared/schema.js';
 import { newCardState, reviewCard as nextState, srsCardId } from '../../shared/srs.js';
 import { BATCH_SIZE } from './batchUtils.js';
 import { db } from './firebase.js';
+import { addStatsEvent, statsRef, withStats } from './gamificationService.js';
 
 const cardsCol = (uid) => collection(db, COLLECTIONS.USERS, uid, USER_SUBCOLLECTIONS.SRS_CARDS);
 const progressRef = (uid, courseId, lessonId) =>
@@ -75,13 +76,27 @@ export async function isLessonCompleted(uid, courseId, lessonId) {
   return (await getDoc(progressRef(uid, courseId, lessonId))).exists();
 }
 
-/** Отмечает урок пройденным и добавляет его слова в повторение одной пачкой. */
+/**
+ * Отмечает урок пройденным (первый раз — с очками за урок) и добавляет его
+ * слова в повторение.
+ */
 export async function completeLesson(uid, courseId, lessonId, entries) {
-  const done = await isLessonCompleted(uid, courseId, lessonId);
-  const added = await addWordsToReview(uid, courseId, entries, (batch) => {
-    if (!done) batch.set(progressRef(uid, courseId, lessonId), { courseId, lessonId, completedAt: serverTimestamp() });
-  });
-  return { added, alreadyCompleted: done };
+  const ref = progressRef(uid, courseId, lessonId);
+  const mark = (withPoints) =>
+    runTransaction(db, async (tx) => {
+      const progress = await tx.get(ref);
+      const stats = withPoints ? await tx.get(statsRef(uid)) : null;
+      if (progress.exists()) return false;
+      tx.set(ref, { courseId, lessonId, completedAt: serverTimestamp() });
+      if (withPoints) addStatsEvent(tx, uid, stats, 'lesson', ref.id);
+      return true;
+    });
+  const firstTime = await withStats(
+    () => mark(true),
+    () => mark(false),
+  );
+  const added = await addWordsToReview(uid, courseId, entries);
+  return { added, alreadyCompleted: !firstTime };
 }
 
 /** Пройденные уроки читателя (для отметок в оглавлении). */
@@ -120,7 +135,19 @@ export async function submitReview(uid, card, grade) {
     dueAt: Timestamp.fromMillis(Date.now() + dueMinutes * 60000),
     lastReviewedAt: serverTimestamp(),
   };
-  await updateDoc(doc(cardsCol(uid), card.id), update);
+  const ref = doc(cardsCol(uid), card.id);
+  // Очки — только если карточку уже повторяли и вспомнили (см. shared/gamification.js).
+  const scored = card.lastReviewedAt != null && state.interval >= 1;
+  const write = (withPoints) =>
+    runTransaction(db, async (tx) => {
+      const stats = withPoints ? await tx.get(statsRef(uid)) : null;
+      tx.update(ref, update);
+      if (withPoints) addStatsEvent(tx, uid, stats, 'review', card.id, { scored });
+    });
+  await withStats(
+    () => write(true),
+    () => write(false),
+  );
   notify();
   return update;
 }

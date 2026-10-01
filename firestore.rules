@@ -157,8 +157,10 @@ service cloud.firestore {
       }
 
       // ---------- users/{uid}/lessonProgress/{courseId_lessonId} — пройденные уроки ----------
+      // Удалять нельзя: первое прохождение урока даёт очки (userStats).
       match /lessonProgress/{progressId} {
-        allow read, delete: if isSelf(uid);
+        allow read: if isSelf(uid);
+        allow delete: if false;
         allow create: if isSelf(uid)
           && request.resource.data.keys().hasOnly(['courseId', 'lessonId', 'completedAt'])
           && request.resource.data.courseId is string && request.resource.data.lessonId is string
@@ -166,6 +168,24 @@ service cloud.firestore {
           && exists(/databases/$(database)/documents/publicCourses/$(request.resource.data.courseId)/lessons/$(request.resource.data.lessonId))
           && request.resource.data.completedAt == request.time;
         allow update: if false;
+      }
+
+      // ---------- users/{uid}/completedCourses/{courseId} — курс пройден (v2) ----------
+      // Видно всем (значки в профиле). Проверка упрощённая: пройдены первый и
+      // последний уроки опубликованного курса (правила не умеют перебрать все уроки).
+      match /completedCourses/{courseId} {
+        function lessonDone(lessonId) {
+          return exists(/databases/$(database)/documents/users/$(uid)/lessonProgress/$(courseId + '_' + lessonId));
+        }
+        allow read: if true;
+        allow create: if isSelf(uid)
+          && request.resource.data.keys().hasOnly(['completedAt'])
+          && request.resource.data.completedAt == request.time
+          && exists(publicPath(courseId))
+          && get(publicPath(courseId)).data.lessonOrder.size() > 0
+          && lessonDone(get(publicPath(courseId)).data.lessonOrder[0])
+          && lessonDone(get(publicPath(courseId)).data.lessonOrder[get(publicPath(courseId)).data.lessonOrder.size() - 1]);
+        allow update, delete: if false;
       }
 
       // ---------- users/{uid}/taskResults/{courseId_lessonId_taskId} — первая попытка (v2) ----------
@@ -191,6 +211,111 @@ service cloud.firestore {
         allow create: if isSelf(uid) && validTaskResult(resultId, request.resource.data);
         allow update, delete: if false;
       }
+    }
+
+    // ---------- userStats/{uid} — очки, серия, счётчики (v2) ----------
+    // Читают все (рейтинг, профиль). Меняет только владелец и только вместе с
+    // событием в той же записи: первая попытка задания, повторение карточки
+    // или первое прохождение урока. Все поля должны быть ровно такими, как
+    // их считает applyStatsEvent (shared/gamification.js); дни — по UTC.
+
+    function statsPath(uid) {
+      return /databases/$(database)/documents/userStats/$(uid);
+    }
+
+    function userItemPath(uid, sub, id) {
+      return /databases/$(database)/documents/users/$(uid)/$(sub)/$(id);
+    }
+
+    function statsDefaults() {
+      return {
+        'points': 0, 'streak': 0, 'bestStreak': 0, 'lastActiveDay': -1,
+        'tasksCount': 0, 'reviewsCount': 0, 'lessonsCount': 0,
+        'dayIndex': -1, 'dayTasks': 0, 'dayReviews': 0, 'dayLessons': 0,
+        'weekIndex': -1, 'weekPoints': 0
+      };
+    }
+
+    function isNewItemEvent(uid, sub, id) {
+      return !exists(userItemPath(uid, sub, id)) && existsAfter(userItemPath(uid, sub, id));
+    }
+
+    // Повторение: карточка в этой же записи получила lastReviewedAt == request.time.
+    function isReviewEvent(uid, id) {
+      let card = userItemPath(uid, 'srsCards', id);
+      return exists(card)
+        && getAfter(card).data.lastReviewedAt == request.time
+        && get(card).data.lastReviewedAt != request.time;
+    }
+
+    // Очки за повторение — только если карточку уже повторяли и её вспомнили:
+    // удалить и заново добавить карточку ради очков не выйдет.
+    function isScoredReview(uid, id) {
+      let card = userItemPath(uid, 'srsCards', id);
+      return get(card).data.lastReviewedAt != null && getAfter(card).data.interval >= 1;
+    }
+
+    function statsEventDelta(uid, type, id) {
+      return type == 'task'
+        ? (getAfter(userItemPath(uid, 'taskResults', id)).data.correct ? 10 : 2)
+        : (type == 'review' ? (isScoredReview(uid, id) ? 2 : 0) : 20);
+    }
+
+    function isStatsEvent(uid, type, id) {
+      return (type == 'task' && isNewItemEvent(uid, 'taskResults', id))
+        || (type == 'review' && isReviewEvent(uid, id))
+        || (type == 'lesson' && isNewItemEvent(uid, 'lessonProgress', id));
+    }
+
+    function validStatsWrite(uid) {
+      let d = request.resource.data;
+      let old = resource == null ? statsDefaults() : resource.data;
+      let type = d.get('lastEvent', '');
+      let id = d.get('lastEventId', '');
+      let today = math.floor(request.time.toMillis() / 86400000);
+      let week = math.floor((today + 3) / 7);
+      let sameDay = old.dayIndex == today;
+      let active = type in ['task', 'review'];
+      let streak = !active || old.lastActiveDay == today ? old.streak
+        : (old.lastActiveDay == today - 1 ? old.streak + 1 : 1);
+      return d.keys().hasOnly(['points', 'streak', 'bestStreak', 'lastActiveDay', 'tasksCount', 'reviewsCount',
+                               'lessonsCount', 'dayIndex', 'dayTasks', 'dayReviews', 'dayLessons', 'weekIndex',
+                               'weekPoints', 'lastEvent', 'lastEventId', 'updatedAt'])
+        && type in ['task', 'review', 'lesson'] && id is string && id.size() <= 200
+        && isStatsEvent(uid, type, id)
+        && d.points == old.points + statsEventDelta(uid, type, id)
+        && d.streak == streak
+        && d.bestStreak == (streak > old.bestStreak ? streak : old.bestStreak)
+        && d.lastActiveDay == (active ? today : old.lastActiveDay)
+        && d.tasksCount == old.tasksCount + (type == 'task' ? 1 : 0)
+        && d.reviewsCount == old.reviewsCount + (type == 'review' && isScoredReview(uid, id) ? 1 : 0)
+        && d.lessonsCount == old.lessonsCount + (type == 'lesson' ? 1 : 0)
+        && d.dayIndex == today
+        && d.dayTasks == (sameDay ? old.dayTasks : 0) + (type == 'task' ? 1 : 0)
+        && d.dayReviews == (sameDay ? old.dayReviews : 0) + (type == 'review' ? 1 : 0)
+        && d.dayLessons == (sameDay ? old.dayLessons : 0) + (type == 'lesson' ? 1 : 0)
+        && d.weekIndex == week
+        && d.weekPoints == (old.weekIndex == week ? old.weekPoints : 0) + statsEventDelta(uid, type, id)
+        && d.updatedAt == request.time;
+    }
+
+    match /userStats/{uid} {
+      allow read: if true;
+      allow create, update: if isSelf(uid) && validStatsWrite(uid);
+      allow delete: if false;
+    }
+
+    // ---------- leaderboards/{weekIndex}/entries/{uid} — рейтинг недели (v2) ----------
+    // Копия weekPoints из userStats: запрос «по неделе и по очкам» к userStats
+    // потребовал бы составной индекс. Значение обязано совпадать с userStats после записи.
+    match /leaderboards/{week}/entries/{uid} {
+      allow read: if true;
+      allow create, update: if isSelf(uid)
+        && request.resource.data.keys().hasOnly(['points'])
+        && existsAfter(statsPath(uid))
+        && getAfter(statsPath(uid)).data.weekIndex == int(week)
+        && request.resource.data.points == getAfter(statsPath(uid)).data.weekPoints;
+      allow delete: if false;
     }
 
     // ---------- rateLimits/{uid} ----------

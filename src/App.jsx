@@ -14,6 +14,8 @@ import MyCoursesPage from './pages/courses/MyCoursesPage.jsx';
 import CatalogPage from './pages/catalog/CatalogPage.jsx';
 import DemoCoursePage from './pages/demo/DemoCoursePage.jsx';
 import ReviewPage from './pages/review/ReviewPage.jsx';
+import ProgressPage from './pages/progress/ProgressPage.jsx';
+import LeaderboardPage from './pages/leaderboard/LeaderboardPage.jsx';
 import ProfilePage from './pages/profile/ProfilePage.jsx';
 import CoursePage from './pages/course/CoursePage.jsx';
 import CourseEditorPage from './pages/editor/CourseEditorPage.jsx';
@@ -78,6 +80,15 @@ export default function App() {
               </RequireAuth>
             }
           />
+          <Route
+            path="progress"
+            element={
+              <RequireAuth>
+                <ProgressPage />
+              </RequireAuth>
+            }
+          />
+          <Route path="leaderboard" element={<LeaderboardPage />} />
           <Route path="catalog" element={<CatalogPage />} />
           <Route path="demo" element={<DemoCoursePage />} />
           <Route path="course/:courseId" element={<CoursePage />} />

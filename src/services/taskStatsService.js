@@ -7,6 +7,7 @@
 import { collection, doc, getDoc, getDocs, increment, runTransaction, serverTimestamp } from 'firebase/firestore';
 import { COLLECTIONS, SUBCOLLECTIONS, USER_SUBCOLLECTIONS } from '../../shared/schema.js';
 import { db } from './firebase.js';
+import { addStatsEvent, statsRef, withStats } from './gamificationService.js';
 
 /** Минимум ответов, с которого автору показывается процент ошибок. */
 export const STATS_MIN_ATTEMPTS = 5;
@@ -30,14 +31,22 @@ export async function recordFirstAttempt(uid, { courseId, lessonId, taskId, bloc
   recorded.add(key);
   const markerRef = doc(db, COLLECTIONS.USERS, uid, USER_SUBCOLLECTIONS.TASK_RESULTS, id);
   const statRef = doc(db, COLLECTIONS.PUBLIC_COURSES, courseId, SUBCOLLECTIONS.TASK_STATS, `${lessonId}_${taskId}`);
-  try {
-    const first = await runTransaction(db, async (tx) => {
+  // Отметка, сумма задания и (если правила пропустят) очки читателя — одной транзакцией.
+  const run = (withPoints) =>
+    runTransaction(db, async (tx) => {
       const marker = await tx.get(markerRef);
+      const stats = withPoints ? await tx.get(statsRef(uid)) : null;
       if (marker.exists()) return false;
       tx.set(markerRef, { courseId, lessonId, taskId, blockIndex, correct, createdAt: serverTimestamp() });
       tx.set(statRef, { lessonId, taskId, attempts: increment(1), wrong: increment(correct ? 0 : 1) }, { merge: true });
+      if (withPoints) addStatsEvent(tx, uid, stats, 'task', id, { correct });
       return true;
     });
+  try {
+    const first = await withStats(
+      () => run(true),
+      () => run(false),
+    );
     if (first) window.dispatchEvent(new CustomEvent(TASK_RESULT_EVENT, { detail: { courseId, lessonId, taskId, correct } }));
     return first;
   } catch (error) {

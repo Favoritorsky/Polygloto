@@ -96,3 +96,26 @@
   flex-wrap: wrap;
   row-gap: 0.25rem;
 }
+
+.streak {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: var(--color-text);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.streak:hover {
+  border-color: var(--color-primary);
+}
+
+.streakOff {
+  color: var(--color-text-muted);
+  filter: grayscale(1);
+}

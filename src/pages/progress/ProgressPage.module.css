@@ -1,0 +1,108 @@
+.page {
+  max-width: 48rem;
+  margin: 0 auto;
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: 0.75rem;
+  margin-bottom: 1.5rem;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 1rem 1.25rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+}
+
+.card small,
+.muted {
+  color: var(--color-text-muted);
+}
+
+.big {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+}
+
+.quests,
+.rules {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 1rem 1.25rem;
+  margin-bottom: 1.25rem;
+}
+
+.quests h2,
+.rules h2 {
+  font-size: 1.15rem;
+  margin: 0 0 0.75rem;
+}
+
+.quests h2 small {
+  font-weight: 400;
+  color: var(--color-text-muted);
+}
+
+.quests ul {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.quests li {
+  display: grid;
+  grid-template-columns: 1.5rem 1fr minmax(6rem, 10rem) 3rem;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.quests progress {
+  width: 100%;
+  accent-color: var(--color-primary);
+}
+
+.check {
+  font-weight: 700;
+  color: var(--color-text-muted);
+}
+
+.done .check {
+  color: var(--color-success);
+}
+
+.done .questTitle {
+  text-decoration: line-through;
+  color: var(--color-text-muted);
+}
+
+.count {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.rules ul {
+  margin: 0 0 0.5rem;
+  padding-left: 1.25rem;
+}
+
+@media (max-width: 480px) {
+  .quests li {
+    grid-template-columns: 1.5rem 1fr 3rem;
+  }
+
+  .quests progress {
+    grid-column: 2 / 4;
+    grid-row: 2;
+  }
+}

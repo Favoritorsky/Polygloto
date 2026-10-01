@@ -9,6 +9,9 @@ import { useAsync, useSubscription } from '../../hooks/useSubscription.js';
 import { plural } from '../../model/plural.js';
 import { computeBadges, computeProfileStats } from '../../profile/profileStats.js';
 import { countUserComments } from '../../services/commentService.js';
+import { countCompletedCourses } from '../../services/gamificationService.js';
+import { useNow, useUserStats } from '../../hooks/useMyStats.js';
+import { currentStreak } from '../../../shared/gamification.js';
 import { subscribeToAuthorCourses } from '../../services/profileService.js';
 import { subscribeToUser } from '../../services/userService.js';
 import ProfileEditForm from './ProfileEditForm.jsx';
@@ -31,7 +34,11 @@ export default function ProfilePage() {
   const courses = useSubscription((onData, onError) => subscribeToAuthorCourses(uid, onData, onError), profile.data ? uid : null);
 
   const comments = useAsync(() => countUserComments(uid), profile.data ? uid : null);
-  const stats = computeProfileStats(courses.data ?? [], comments.data ?? 0);
+  const learning = useUserStats(profile.data ? uid : null);
+  const completed = useAsync(() => countCompletedCourses(uid), profile.data ? uid : null);
+  const now = useNow();
+  const stats = computeProfileStats(courses.data ?? [], comments.data ?? 0, learning.data, completed.data ?? 0);
+  const streak = currentStreak(learning.data, now);
   const badges = computeBadges(stats);
   const since = memberSince(profile.data?.createdAt);
 
@@ -93,6 +100,21 @@ export default function ProfilePage() {
               <div>
                 <strong>{comments.loading ? '…' : stats.commentsCount}</strong>
                 <span>{plural(stats.commentsCount, ['комментарий', 'комментария', 'комментариев'])}</span>
+              </div>
+              <div>
+                <strong>{learning.loading ? '…' : `🔥 ${streak}`}</strong>
+                <span>
+                  {plural(streak, ['день подряд', 'дня подряд', 'дней подряд'])}
+                  {stats.bestStreak > streak && `, рекорд ${stats.bestStreak}`}
+                </span>
+              </div>
+              <div>
+                <strong>{learning.loading ? '…' : stats.points}</strong>
+                <span>{plural(stats.points, ['очко', 'очка', 'очков'])}</span>
+              </div>
+              <div>
+                <strong>{completed.loading ? '…' : stats.completedCourses}</strong>
+                <span>{plural(stats.completedCourses, ['курс пройден', 'курса пройдено', 'курсов пройдено'])}</span>
               </div>
             </section>
 

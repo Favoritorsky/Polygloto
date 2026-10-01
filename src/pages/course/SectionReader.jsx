@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import ContentRenderer from '../../components/content/ContentRenderer.jsx';
 import ReactionBar from '../../components/reactions/ReactionBar.jsx';
@@ -7,6 +7,7 @@ import AsyncState from '../../components/ui/AsyncState.jsx';
 import Button from '../../components/ui/Button.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
 import { recordFirstAttempt } from '../../services/taskStatsService.js';
+import { markCourseCompleted } from '../../services/gamificationService.js';
 import { useReactions } from '../../hooks/useReactions.js';
 import { useAsync, useSubscription } from '../../hooks/useSubscription.js';
 import { toUserMessage } from '../../services/errors.js';
@@ -52,6 +53,11 @@ export default function SectionReader({ kind }) {
     kind === 'lessons' && user ? `${user.uid}/${course.id}` : null,
   );
   const completed = progress.data ?? new Set();
+  // Все уроки пройдены — отметка «курс пройден» для значков (один раз).
+  const allDone = kind === 'lessons' && user && items.length > 0 && items.every((i) => progress.data?.has(i.id));
+  useEffect(() => {
+    if (allDone) markCourseCompleted(user.uid, course.id).catch(() => {});
+  }, [allDone, user, course.id]);
   const reactions = useReactions(course.id, 'lesson', kind === 'lessons' && current ? [current.id] : [], user?.uid);
 
   // Первая попытка каждого задания идёт в статистику автора (только суммы).

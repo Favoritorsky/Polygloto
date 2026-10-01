@@ -4,6 +4,8 @@ import ThemeToggle from './ThemeToggle.jsx';
 import Button from '../ui/Button.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
 import { useDueCount } from '../../hooks/useDueCount.js';
+import { useNow, useUserStats } from '../../hooks/useMyStats.js';
+import { currentStreak } from '../../../shared/gamification.js';
 import { logout } from '../../services/authService.js';
 import styles from './Header.module.css';
 
@@ -13,6 +15,9 @@ export default function Header() {
   const { user, profile, isAdmin, initializing } = useAuth();
   const navigate = useNavigate();
   const due = useDueCount(user?.uid);
+  const stats = useUserStats(user?.uid);
+  const now = useNow(60000);
+  const streak = currentStreak(stats.data, now);
 
   async function handleLogout() {
     await logout();
@@ -44,6 +49,9 @@ export default function Header() {
               )}
             </NavLink>
           )}
+          <NavLink to="/leaderboard" className={navClass}>
+            Рейтинг
+          </NavLink>
           {isAdmin && (
             <NavLink to="/admin" className={navClass}>
               Модерация
@@ -61,6 +69,16 @@ export default function Header() {
                 Стать автором
               </Button>
             </>
+          )}
+          {user && (
+            <NavLink
+              to="/progress"
+              className={streak > 0 ? styles.streak : `${styles.streak} ${styles.streakOff}`}
+              title="Мой прогресс: серия дней, очки, задания дня"
+              aria-label={`Мой прогресс, серия: ${streak} дн.`}
+            >
+              <span aria-hidden="true">🔥</span> {streak}
+            </NavLink>
           )}
           {user && (
             <>

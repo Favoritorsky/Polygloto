@@ -17,6 +17,8 @@ export const COLLECTIONS = Object.freeze({
   RATE_LIMITS: 'rateLimits',
   CATALOG_META: 'catalogMeta',
   COMMENT_AUTHORS: 'commentAuthors',
+  USER_STATS: 'userStats',
+  LEADERBOARDS: 'leaderboards',
 });
 
 /** catalogMeta/languages — список языков опубликованных курсов (обновляет админ при одобрении). */
@@ -38,6 +40,7 @@ export const SUBCOLLECTIONS = Object.freeze({
 export const USER_SUBCOLLECTIONS = Object.freeze({
   SRS_CARDS: 'srsCards',
   TASK_RESULTS: 'taskResults',
+  COMPLETED_COURSES: 'completedCourses',
   LESSON_PROGRESS: 'lessonProgress',
 });
 
