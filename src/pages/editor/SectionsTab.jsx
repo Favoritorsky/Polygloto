@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { LESSON_TEMPLATES, buildLessonFromTemplate } from '../../../shared/lessonTemplates.js';
 import Alert from '../../components/ui/Alert.jsx';
 import AsyncState from '../../components/ui/AsyncState.jsx';
 import Button from '../../components/ui/Button.jsx';
@@ -56,9 +57,12 @@ export default function SectionsTab({ kind }) {
     }
   }
 
-  const handleAdd = () =>
+  // Уроки можно начать с шаблона: «+ Урок» раскрывает выбор.
+  const [choosing, setChoosing] = useState(false);
+  const handleAdd = (templateId = null) =>
     perform(async () => {
-      const id = await createSection(courseId, kind);
+      const id = await createSection(courseId, kind, templateId ? buildLessonFromTemplate(templateId) : null);
+      setChoosing(false);
       setSelectedId(id);
     });
 
@@ -111,10 +115,32 @@ export default function SectionsTab({ kind }) {
             ))}
           </ol>
           {sections.length === 0 && <p className={styles.empty}>{text.empty}</p>}
-          {!readOnly && (
-            <Button variant="secondary" size="sm" onClick={handleAdd} loading={busy}>
+          {!readOnly && !choosing && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => (kind === 'lessons' ? setChoosing(true) : handleAdd())}
+              loading={busy}
+              aria-expanded={kind === 'lessons' ? false : undefined}
+            >
               {text.add}
             </Button>
+          )}
+          {!readOnly && choosing && (
+            <div className={styles.templates} role="group" aria-label="Новый урок">
+              <button type="button" className={styles.template} onClick={() => handleAdd()} disabled={busy}>
+                <strong>Пустой урок</strong>
+              </button>
+              {LESSON_TEMPLATES.map((t) => (
+                <button key={t.id} type="button" className={styles.template} onClick={() => handleAdd(t.id)} disabled={busy}>
+                  <strong>{t.label}</strong>
+                  <span>{t.description}</span>
+                </button>
+              ))}
+              <Button variant="secondary" size="sm" onClick={() => setChoosing(false)} disabled={busy}>
+                Отмена
+              </Button>
+            </div>
           )}
         </aside>
         <section className={styles.editor}>

@@ -17,6 +17,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { defaultCategories } from '../../shared/categories.js';
+import { sanitizeBlocks } from '../../shared/content.js';
 import { COLLECTIONS, CONTENT_SUBCOLLECTIONS, COURSE_STATUS, LIMITS, RATE_LIMITS, SUBCOLLECTIONS } from '../../shared/schema.js';
 import { db } from './firebase.js';
 import { deleteAllDocs } from './batchUtils.js';
@@ -168,12 +169,19 @@ export async function getSection(courseId, kind, id) {
   return snap.exists() ? { id: snap.id, ...snap.data() } : null;
 }
 
-/** Создаёт раздел и добавляет его в порядок — атомарно одним пакетом. */
-export async function createSection(courseId, kind) {
+/**
+ * Создаёт раздел и добавляет его в порядок — атомарно одним пакетом.
+ * initial — { title, blocks } из шаблона урока (shared/lessonTemplates.js).
+ */
+export async function createSection(courseId, kind, initial = null) {
   const { collection: col, orderField, newTitle } = SECTION_KINDS[kind];
   const ref = doc(collection(db, COLLECTIONS.COURSES, courseId, col));
   const batch = writeBatch(db);
-  batch.set(ref, { title: newTitle, blocks: [], updatedAt: serverTimestamp() });
+  batch.set(ref, {
+    title: String(initial?.title ?? newTitle).slice(0, LIMITS.LESSON_TITLE_MAX),
+    blocks: sanitizeBlocks(initial?.blocks ?? []),
+    updatedAt: serverTimestamp(),
+  });
   batch.update(courseRef(courseId), { [orderField]: arrayUnion(ref.id), updatedAt: serverTimestamp() });
   await batch.commit();
   return ref.id;
