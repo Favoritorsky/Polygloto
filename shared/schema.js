@@ -33,6 +33,7 @@ export const SUBCOLLECTIONS = Object.freeze({
   AUDIO: 'audio',
   TASK_STATS: 'taskStats',
   COMMENTS: 'comments',
+  LESSON_COMMENTS: 'lessonComments',
   REACTIONS: 'reactions',
   RATINGS: 'ratings',
 });

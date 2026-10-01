@@ -175,6 +175,7 @@ export async function deleteCourse(courseId) {
   const isPublished = (await getDoc(publicRef)).exists();
   if (isPublished) {
     await deleteAllDocs(collection(course, SUBCOLLECTIONS.COMMENTS), deleteCommentInBatch);
+    await deleteAllDocs(collection(course, SUBCOLLECTIONS.LESSON_COMMENTS), deleteCommentInBatch);
     await deleteAllDocs(collection(course, SUBCOLLECTIONS.REACTIONS));
     for (const name of [...CONTENT_SUBCOLLECTIONS, SUBCOLLECTIONS.AUDIO, SUBCOLLECTIONS.TASK_STATS])
       await deleteAllDocs(collection(publicRef, name));

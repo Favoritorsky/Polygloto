@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import ContentRenderer from '../../components/content/ContentRenderer.jsx';
+import CommentsSection from './CommentsSection.jsx';
 import ReactionBar from '../../components/reactions/ReactionBar.jsx';
 import Alert from '../../components/ui/Alert.jsx';
 import AsyncState from '../../components/ui/AsyncState.jsx';
@@ -21,6 +22,17 @@ import styles from './SectionReader.module.css';
 const PARAM = { lessons: 'lesson', reference: 'section' };
 
 /** Чтение уроков / справочника: оглавление, контент, навигация, реакции на урок. */
+/** Обсуждение урока (v2): комментарии грузятся, только когда блок раскрыт. */
+function LessonDiscussion({ lessonId }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <details className={styles.discussion} onToggle={(e) => setOpen(e.currentTarget.open)}>
+      <summary>💬 Обсуждение урока</summary>
+      {open && <CommentsSection lessonId={lessonId} />}
+    </details>
+  );
+}
+
 export default function SectionReader({ kind }) {
   const { course, dictionary, review } = useCoursePage();
   const { user, isBanned } = useAuth();
@@ -151,6 +163,9 @@ export default function SectionReader({ kind }) {
           )}
           {index < items.length - 1 && <Button onClick={() => select(items[index + 1].id)}>{items[index + 1].title || 'Далее'} →</Button>}
         </div>
+        {kind === 'lessons' && (
+          <LessonDiscussion key={current.id} lessonId={current.id} />
+        )}
       </article>
     </div>
   );

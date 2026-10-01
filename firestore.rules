@@ -645,6 +645,36 @@ service cloud.firestore {
         );
       }
 
+      // Комментарии к уроку (v2): те же правила, что у комментариев курса,
+      // плюс lessonId опубликованного урока. Отметка автора — commentAuthors
+      // с kind == 'lesson'.
+      match /lessonComments/{commentId} {
+        function lessonCommentAuthorPath() {
+          return /databases/$(database)/documents/commentAuthors/$(commentId);
+        }
+
+        allow read: if isPublished();
+        allow create: if isActiveUser()
+          && isPublished()
+          && request.resource.data.keys().hasOnly(['authorId', 'authorName', 'lessonId', 'text', 'createdAt'])
+          && request.resource.data.authorId == request.auth.uid
+          && request.resource.data.authorName == userDoc().data.displayName
+          && request.resource.data.lessonId is string
+          && request.resource.data.lessonId.size() <= 60
+          && exists(/databases/$(database)/documents/publicCourses/$(courseId)/lessons/$(request.resource.data.lessonId))
+          && isStringOfLength(request.resource.data.text, 1, 2000)
+          && request.resource.data.text == request.resource.data.text.trim()
+          && request.resource.data.createdAt == request.time
+          && rateLimitAfter('addComment')
+          && existsAfter(lessonCommentAuthorPath());
+        allow update: if false;
+        allow delete: if signedIn() && !existsAfter(lessonCommentAuthorPath()) && (
+          resource.data.authorId == request.auth.uid
+          || (isPublished() && publicCourse().authorId == request.auth.uid)
+          || isCourseOwner()
+        );
+      }
+
       // Одна реакция пользователя на цель: id = {uid}_{targetType}_{targetId}.
       function validReaction(reactionId) {
         let d = request.resource.data;
@@ -659,6 +689,8 @@ service cloud.firestore {
               && exists(/databases/$(database)/documents/publicCourses/$(courseId)/lessons/$(d.targetId)))
             || (d.targetType == 'comment'
               && exists(/databases/$(database)/documents/courses/$(courseId)/comments/$(d.targetId)))
+            || (d.targetType == 'lessonComment'
+              && exists(/databases/$(database)/documents/courses/$(courseId)/lessonComments/$(d.targetId)))
           );
       }
 
@@ -671,6 +703,8 @@ service cloud.firestore {
           resource.data.uid == request.auth.uid
           || (resource.data.targetType == 'comment'
             && !exists(/databases/$(database)/documents/courses/$(courseId)/comments/$(resource.data.targetId)))
+          || (resource.data.targetType == 'lessonComment'
+            && !exists(/databases/$(database)/documents/courses/$(courseId)/lessonComments/$(resource.data.targetId)))
           || isCourseOwner()
         );
       }
@@ -782,21 +816,23 @@ service cloud.firestore {
     // который ключ деплоя создать не может. Создаётся и удаляется в одной
     // записи с самим комментарием (это требует и правило комментария).
     match /commentAuthors/{commentId} {
-      function commentPath(courseId) {
-        return /databases/$(database)/documents/courses/$(courseId)/comments/$(commentId);
+      // kind == 'lesson' — комментарий к уроку (courses/{id}/lessonComments, v2).
+      function commentPath(d) {
+        return /databases/$(database)/documents/courses/$(d.courseId)/$(d.get('kind', '') == 'lesson' ? 'lessonComments' : 'comments')/$(commentId);
       }
 
       allow read: if true;
       allow create: if signedIn()
-        && request.resource.data.keys().hasOnly(['authorId', 'courseId'])
+        && request.resource.data.keys().hasOnly(['authorId', 'courseId', 'kind'])
+        && request.resource.data.get('kind', 'course') in ['course', 'lesson']
         && request.resource.data.authorId == request.auth.uid
         && request.resource.data.courseId is string
-        && !exists(commentPath(request.resource.data.courseId))
-        && existsAfter(commentPath(request.resource.data.courseId))
-        && getAfter(commentPath(request.resource.data.courseId)).data.authorId == request.auth.uid;
+        && !exists(commentPath(request.resource.data))
+        && existsAfter(commentPath(request.resource.data))
+        && getAfter(commentPath(request.resource.data)).data.authorId == request.auth.uid;
       allow update: if false;
       // Убрать можно только вместе с комментарием (или если его уже нет).
-      allow delete: if signedIn() && !existsAfter(commentPath(resource.data.courseId));
+      allow delete: if signedIn() && !existsAfter(commentPath(resource.data));
     }
   }
 }

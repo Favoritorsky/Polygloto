@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useId, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { LIMITS } from '../../../shared/schema.js';
 import Avatar from '../../components/profile/Avatar.jsx';
@@ -19,7 +19,8 @@ function formatDate(ts) {
   return ts?.toDate ? ts.toDate().toLocaleString('ru-RU', { dateStyle: 'medium', timeStyle: 'short' }) : 'только что';
 }
 
-function CommentForm({ courseId, author, onSent }) {
+function CommentForm({ courseId, lessonId, author, onSent }) {
+  const id = useId();
   const [text, setText] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -36,7 +37,7 @@ function CommentForm({ courseId, author, onSent }) {
     const sent = text;
     setText('');
     try {
-      await addComment(courseId, author, sent);
+      await addComment(courseId, author, sent, lessonId);
       onSent();
     } catch (err) {
       setText((current) => current || sent);
@@ -48,16 +49,16 @@ function CommentForm({ courseId, author, onSent }) {
 
   return (
     <form onSubmit={handleSubmit} className={styles.form} noValidate>
-      <label htmlFor="comment-text" className="visually-hidden">
-        Комментарий
+      <label htmlFor={id} className="visually-hidden">
+        {lessonId ? 'Комментарий к уроку' : 'Комментарий'}
       </label>
       <textarea
-        id="comment-text"
+        id={id}
         rows={3}
         value={text}
         maxLength={LIMITS.COMMENT_MAX}
         onChange={(e) => setText(e.target.value)}
-        placeholder="Поделитесь впечатлениями или задайте вопрос автору"
+        placeholder={lessonId ? 'Вопрос или заметка по этому уроку' : 'Поделитесь впечатлениями или задайте вопрос автору'}
       />
       <div className={styles.formFooter}>
         <span className={styles.counter}>
@@ -72,29 +73,33 @@ function CommentForm({ courseId, author, onSent }) {
   );
 }
 
-/** Обсуждение курса: комментарии с реакциями, удаление своих (и модерация автором курса/админом). */
-export default function CommentsSection() {
+/**
+ * Обсуждение курса: комментарии с реакциями, удаление своих (и модерация автором курса/админом).
+ * С lessonId — обсуждение одного урока (v2).
+ */
+export default function CommentsSection({ lessonId = null }) {
   const { course } = useCoursePage();
   const { user, profile, isAdmin, isBanned } = useAuth();
   const [count, setCount] = useState(COMMENTS_PAGE);
   const [actionError, setActionError] = useState('');
   const comments = useSubscription(
-    (onData, onError) => subscribeToComments(course.id, count, onData, onError),
-    `${course.id}/${count}`,
+    (onData, onError) => subscribeToComments(course.id, count, onData, onError, lessonId),
+    `${course.id}/${lessonId}/${count}`,
   );
   const ids = (comments.data ?? []).map((c) => c.id);
   // Общее число пересчитывается после каждой подтверждённой сервером записи
   // (список по подписке обновляется раньше, чем запись дойдёт до сервера).
   const [writes, setWrites] = useState(0);
   const recount = () => setWrites((n) => n + 1);
-  const total = useAsync(() => countComments(course.id), `${course.id}/${writes}`);
-  const reactions = useReactions(course.id, 'comment', ids, user?.uid);
+  const total = useAsync(() => countComments(course.id, lessonId), `${course.id}/${lessonId}/${writes}`);
+  const targetType = lessonId ? 'lessonComment' : 'comment';
+  const reactions = useReactions(course.id, targetType, ids, user?.uid);
 
   async function handleDelete(comment) {
     if (!window.confirm('Удалить комментарий?')) return;
     setActionError('');
     try {
-      await deleteComment(course.id, comment.id);
+      await deleteComment(course.id, comment.id, lessonId);
       recount();
     } catch (err) {
       setActionError(toUserMessage(err));
@@ -104,7 +109,7 @@ export default function CommentsSection() {
   async function handleReaction(comment, emoji) {
     setActionError('');
     try {
-      await toggleReaction(course.id, user.uid, 'comment', comment.id, emoji, reactions.data.get(comment.id)?.mine);
+      await toggleReaction(course.id, user.uid, targetType, comment.id, emoji, reactions.data.get(comment.id)?.mine);
     } catch (err) {
       setActionError(toUserMessage(err));
     }
@@ -113,8 +118,8 @@ export default function CommentsSection() {
   const canModerate = (comment) => user && (comment.authorId === user.uid || course.authorId === user.uid || isAdmin);
 
   return (
-    <section className={styles.wrap}>
-      {user && profile && !isBanned && <CommentForm courseId={course.id} author={{ uid: user.uid, displayName: profile.displayName }} onSent={recount} />}
+    <section className={styles.wrap} aria-label={lessonId ? 'Обсуждение урока' : undefined}>
+      {user && profile && !isBanned && <CommentForm courseId={course.id} lessonId={lessonId} author={{ uid: user.uid, displayName: profile.displayName }} onSent={recount} />}
       {!user && (
         <p className={styles.muted}>
           <Link to="/login">Войдите</Link> или <Link to="/register">зарегистрируйтесь</Link>, чтобы оставить комментарий.
@@ -127,7 +132,7 @@ export default function CommentsSection() {
         error={comments.error}
         onRetry={comments.retry}
         empty={comments.data?.length === 0}
-        emptyText="Комментариев пока нет — будьте первым."
+        emptyText={lessonId ? 'Вопросов по уроку пока нет.' : 'Комментариев пока нет — будьте первым.'}
       >
         <ul className={styles.list}>
           {comments.data?.map((comment) => (
@@ -138,6 +143,7 @@ export default function CommentsSection() {
                   {comment.authorName}
                 </Link>
                 {comment.authorId === course.authorId && <span className={styles.badge}>автор курса</span>}
+                {course.coAuthors?.includes(comment.authorId) && <span className={styles.badge}>соавтор</span>}
                 <time className={styles.date}>{formatDate(comment.createdAt)}</time>
                 {canModerate(comment) && (
                   <button type="button" className={styles.delete} onClick={() => handleDelete(comment)}>
