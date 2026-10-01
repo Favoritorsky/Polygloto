@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
 import Alert from '../../components/ui/Alert.jsx';
 import AsyncState from '../../components/ui/AsyncState.jsx';
 import Badge from '../../components/ui/Badge.jsx';
 import Button from '../../components/ui/Button.jsx';
+import CardLink from '../../components/ui/CardLink.jsx';
+import tile from '../../components/ui/CardLink.module.css';
 import { useAsync } from '../../hooks/useSubscription.js';
 import { toUserMessage } from '../../services/errors.js';
 import { searchUsers, setUserBan } from '../../services/moderationService.js';
@@ -54,18 +55,24 @@ export default function UsersTab() {
       <AsyncState loading={loading} error={error} onRetry={retry} empty={users?.length === 0} emptyText="Никого не найдено.">
         <ul className={styles.list}>
           {users?.map((user) => (
-            <li key={user.id} className={styles.item}>
+            <li key={user.id} className={`${styles.item} ${tile.tile}`}>
               <div className={styles.main}>
-                <Link to={`/users/${user.id}`} className={styles.title}>
+                <CardLink to={`/users/${user.id}`} className={styles.title}>
                   {user.displayName}
-                </Link>
+                </CardLink>
                 <div className={styles.meta}>
                   <span>{ROLE_LABELS[user.role] ?? user.role}</span>
                 </div>
               </div>
               {user.banned && <Badge tone="negative">Заблокирован</Badge>}
               {user.role !== 'admin' && (
-                <Button variant={user.banned ? 'secondary' : 'danger'} size="sm" loading={busy === user.id} onClick={() => toggleBan(user)}>
+                <Button
+                  className={tile.above}
+                  variant={user.banned ? 'secondary' : 'danger'}
+                  size="sm"
+                  loading={busy === user.id}
+                  onClick={() => toggleBan(user)}
+                >
                   {user.banned ? 'Разблокировать' : 'Заблокировать'}
                 </Button>
               )}

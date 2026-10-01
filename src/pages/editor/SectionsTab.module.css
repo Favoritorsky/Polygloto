@@ -1,13 +1,13 @@
 .layout {
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: 260px minmax(0, 1fr);
   gap: 1.25rem;
   align-items: start;
 }
 
 @media (max-width: 800px) {
   .layout {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 }
 
@@ -47,6 +47,7 @@
   background: none;
   padding: 0.45rem 0.5rem;
   cursor: pointer;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

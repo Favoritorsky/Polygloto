@@ -20,9 +20,6 @@
 }
 
 .item {
-  position: relative;
-  cursor: pointer;
-  transition: box-shadow 0.15s, border-color 0.15s;
   display: flex;
   align-items: center;
   gap: 1rem;
@@ -40,34 +37,6 @@
 .title {
   font-weight: 700;
   font-size: 1.1rem;
-  color: var(--color-text);
-  text-decoration: none;
-}
-
-.item:hover {
-  border-color: var(--color-primary);
-  box-shadow: var(--shadow-sm);
-}
-
-.item:hover .title {
-  color: var(--color-primary);
-}
-
-.item:focus-within {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
-
-.title:focus-visible {
-  outline: none;
-}
-
-/* Вся плитка ведёт в редактор; «Открыть» лежит поверх и ведёт на страницу курса. */
-.title::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
 }
 
 .meta {
@@ -79,8 +48,6 @@
 }
 
 .viewLink {
-  position: relative;
-  z-index: 1;
   font-size: 0.9rem;
 }
 
@@ -89,4 +56,23 @@
   flex-wrap: wrap;
   gap: 0.5rem;
   justify-content: flex-end;
+}
+
+@media (max-width: 560px) {
+  .header {
+    flex-wrap: wrap;
+  }
+
+  .actions {
+    justify-content: flex-start;
+  }
+
+  .item {
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+  }
+
+  .main {
+    flex-basis: 100%;
+  }
 }

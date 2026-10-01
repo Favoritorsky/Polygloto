@@ -7,6 +7,7 @@
 
 .buttons {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.4rem;
 }
 
@@ -31,9 +32,27 @@
   opacity: 0.8;
 }
 
-.active {
-  border-color: var(--color-primary);
-  background: var(--color-primary-tint);
+.button svg {
+  flex-shrink: 0;
+  color: var(--color-text-muted);
+}
+
+.like.active {
+  border-color: var(--color-success-border);
+  background: var(--color-success-bg);
+}
+
+.like.active svg {
+  color: var(--color-success);
+}
+
+.dislike.active {
+  border-color: var(--color-danger-border);
+  background: var(--color-danger-bg);
+}
+
+.dislike.active svg {
+  color: var(--color-danger);
 }
 
 .hint {

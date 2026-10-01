@@ -92,6 +92,8 @@ body {
   font-size: 16px;
   line-height: 1.55;
   -webkit-font-smoothing: antialiased;
+  /* Длинные слова (названия, ссылки, немецкие составные) не раздвигают страницу. */
+  overflow-wrap: break-word;
 }
 
 h1,
@@ -99,7 +101,19 @@ h2,
 h3 {
   font-family: var(--font-display);
   line-height: 1.2;
+  overflow-wrap: anywhere;
   margin: 0 0 0.5em;
+}
+
+/* На телефоне заголовки чуть меньше: длинное название не занимает весь экран. */
+@media (max-width: 560px) {
+  h1 {
+    font-size: 1.6rem;
+  }
+
+  h2 {
+    font-size: 1.3rem;
+  }
 }
 
 a {
@@ -144,4 +158,13 @@ textarea {
   overflow: hidden;
   clip: rect(0 0 0 0);
   white-space: nowrap;
+}
+
+/* Карточки и панели: у последнего абзаца нет нижнего отступа, иначе снизу
+   пустого места больше, чем сверху. Классы CSS-модулей имеют вид _card_xxxx. */
+[class*='_card_'] > :last-child,
+[class*='_panel_'] > :last-child,
+[class*='_empty_'] > :last-child,
+[class*='_decision_'] > :last-child {
+  margin-bottom: 0;
 }

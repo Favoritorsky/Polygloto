@@ -62,7 +62,7 @@
 
 .quests li {
   display: grid;
-  grid-template-columns: 1.5rem 1fr minmax(6rem, 10rem) 3rem;
+  grid-template-columns: 1.5rem minmax(0, 1fr) minmax(6rem, 10rem) 3rem;
   align-items: center;
   gap: 0.5rem;
 }
@@ -98,11 +98,28 @@
 
 @media (max-width: 480px) {
   .quests li {
-    grid-template-columns: 1.5rem 1fr 3rem;
+    grid-template-columns: 1.5rem minmax(0, 1fr) 3rem;
   }
 
   .quests progress {
     grid-column: 2 / 4;
     grid-row: 2;
+  }
+}
+
+/* Телефон: три итога в один ряд, компактнее. */
+@media (max-width: 560px) {
+  .cards {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .card {
+    padding: 0.75rem 0.6rem;
+    font-size: 0.85rem;
+  }
+
+  .big {
+    font-size: 1.5rem;
   }
 }

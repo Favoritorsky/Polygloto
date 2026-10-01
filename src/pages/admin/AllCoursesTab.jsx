@@ -4,6 +4,8 @@ import StatusBadge from '../../components/course/StatusBadge.jsx';
 import Alert from '../../components/ui/Alert.jsx';
 import AsyncState from '../../components/ui/AsyncState.jsx';
 import Button from '../../components/ui/Button.jsx';
+import CardLink from '../../components/ui/CardLink.jsx';
+import tile from '../../components/ui/CardLink.module.css';
 import { useSubscription } from '../../hooks/useSubscription.js';
 import { deleteCourse } from '../../services/courseService.js';
 import { toUserMessage } from '../../services/errors.js';
@@ -34,19 +36,25 @@ export default function AllCoursesTab() {
       {actionError && <Alert tone="error">{actionError}</Alert>}
       <ul className={styles.list}>
         {data?.map((course) => (
-          <li key={course.id} className={styles.item}>
+          <li key={course.id} className={`${styles.item} ${tile.tile}`}>
             <div className={styles.main}>
-              <Link to={`/courses/${course.id}/edit`} className={styles.title}>
+              <CardLink to={`/courses/${course.id}/edit`} className={styles.title}>
                 {course.title}
-              </Link>
+              </CardLink>
               <div className={styles.meta}>
                 <span>{course.language}</span>
-                <Link to={`/users/${course.authorId}`}>Автор</Link>
-                {course.hasPublishedVersion && <Link to={`/course/${course.id}`}>Опубликованная версия</Link>}
+                <Link to={`/users/${course.authorId}`} className={tile.above}>
+                  Автор
+                </Link>
+                {course.hasPublishedVersion && (
+                  <Link to={`/course/${course.id}`} className={tile.above}>
+                    Опубликованная версия
+                  </Link>
+                )}
               </div>
             </div>
             <StatusBadge status={course.status} />
-            <Button variant="danger" size="sm" loading={deleting === course.id} onClick={() => handleDelete(course)}>
+            <Button className={tile.above} variant="danger" size="sm" loading={deleting === course.id} onClick={() => handleDelete(course)}>
               Удалить
             </Button>
           </li>

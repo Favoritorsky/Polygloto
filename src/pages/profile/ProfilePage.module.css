@@ -46,8 +46,9 @@
 
 .ownActions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 1rem;
+  gap: 0.5rem 1rem;
   margin-top: 1rem;
 }
 
@@ -176,5 +177,6 @@
 
 .formActions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.5rem;
 }

@@ -1,5 +1,7 @@
 .content {
   font-size: 1.05rem;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .empty {

@@ -24,12 +24,6 @@
 
 .title {
   font-weight: 700;
-  color: var(--color-text);
-  text-decoration: none;
-}
-
-.title:hover {
-  color: var(--color-primary);
 }
 
 .meta {
@@ -43,4 +37,15 @@
 .search {
   max-width: 24rem;
   margin-bottom: 1rem;
+}
+
+@media (max-width: 560px) {
+  .item {
+    flex-wrap: wrap;
+    gap: 0.5rem 1rem;
+  }
+
+  .main {
+    flex-basis: 100%;
+  }
 }

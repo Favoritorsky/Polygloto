@@ -1,6 +1,7 @@
-import { Link } from 'react-router-dom';
 import Badge from '../../components/ui/Badge.jsx';
 import AsyncState from '../../components/ui/AsyncState.jsx';
+import CardLink from '../../components/ui/CardLink.jsx';
+import tile from '../../components/ui/CardLink.module.css';
 import { useSubscription } from '../../hooks/useSubscription.js';
 import { subscribeToReviewQueue } from '../../services/moderationService.js';
 import styles from './AdminList.module.css';
@@ -15,11 +16,11 @@ export default function ReviewQueueTab() {
     <AsyncState loading={loading} error={error} onRetry={retry} empty={data?.length === 0} emptyText="Очередь пуста — все курсы проверены.">
       <ul className={styles.list}>
         {data?.map((course) => (
-          <li key={course.id} className={styles.item}>
+          <li key={course.id} className={`${styles.item} ${tile.tile}`}>
             <div className={styles.main}>
-              <Link to={`/admin/review/${course.id}`} className={styles.title}>
+              <CardLink to={`/admin/review/${course.id}`} className={styles.title}>
                 {course.title}
-              </Link>
+              </CardLink>
               <div className={styles.meta}>
                 <span>{course.language}</span>
                 <span>Отправлен {formatDate(course.submittedAt)}</span>

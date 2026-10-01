@@ -1,5 +1,4 @@
 .card {
-  position: relative;
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
@@ -8,27 +7,12 @@
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
-  transition: box-shadow 0.15s, transform 0.15s;
   min-width: 0;
-}
-
-.card {
-  cursor: pointer;
 }
 
 .card:hover {
   box-shadow: var(--shadow-md);
   transform: translateY(-1px);
-}
-
-/* Фокус с клавиатуры виден на всей карточке, а не только на заголовке. */
-.card:focus-within {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 2px;
-}
-
-.card:hover .link {
-  color: var(--color-primary);
 }
 
 .language {
@@ -43,22 +27,6 @@
   margin: 0;
   font-size: 1.15rem;
   overflow-wrap: anywhere;
-}
-
-.link {
-  color: var(--color-text);
-  text-decoration: none;
-}
-
-.link:focus-visible {
-  outline: none;
-}
-
-/* Вся карточка кликабельна, но в разметке одна ссылка (см. CardLink). */
-.link::after {
-  content: '';
-  position: absolute;
-  inset: 0;
 }
 
 .author {
@@ -81,4 +49,10 @@
   padding: 0.35rem 0 0;
   font-size: 0.85rem;
   color: var(--color-text-muted);
+}
+
+.stats li {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
 }

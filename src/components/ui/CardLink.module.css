@@ -1,0 +1,49 @@
+/*
+ * Кликабельная плитка: контейнер получает .tile, главная ссылка внутри — CardLink.
+ * Ссылка растягивается на всю плитку через ::after, поэтому клик в любом месте
+ * ведёт по ней. Другие ссылки и кнопки внутри плитки получают .above.
+ */
+.tile {
+  position: relative;
+  cursor: pointer;
+  transition:
+    box-shadow 0.15s,
+    border-color 0.15s,
+    transform 0.15s;
+}
+
+.tile:hover {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+
+/* Фокус с клавиатуры виден на всей плитке, а не только на заголовке. */
+.tile:focus-within {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
+.stretched {
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+.tile:hover .stretched {
+  color: var(--color-primary);
+}
+
+.stretched:focus-visible {
+  outline: none;
+}
+
+.stretched::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+
+.above {
+  position: relative;
+  z-index: 1;
+}

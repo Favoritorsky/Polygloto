@@ -4,9 +4,10 @@ import { useAuth } from '../../hooks/useAuth.js';
 import { useSubscription } from '../../hooks/useSubscription.js';
 import { toUserMessage } from '../../services/errors.js';
 import { setMyRating, subscribeToMyRating } from '../../services/ratingService.js';
+import RatingControl from './RatingControl.jsx';
 import styles from './RatingButtons.module.css';
 
-/** Оценка курса: 👍/👎, один голос, можно сменить или снять повторным нажатием. */
+/** Оценка курса: стрелки «нравится» / «не нравится», один голос, можно сменить или снять повторным нажатием. */
 export default function RatingButtons({ course }) {
   const { user, isBanned } = useAuth();
   const [busy, setBusy] = useState(false);
@@ -33,28 +34,13 @@ export default function RatingButtons({ course }) {
   const canVote = user && !isAuthor && !isBanned;
   return (
     <div className={styles.wrap}>
-      <div className={styles.buttons}>
-        <button
-          type="button"
-          className={mine === 'like' ? `${styles.button} ${styles.active}` : styles.button}
-          onClick={() => vote('like')}
-          disabled={!canVote || busy}
-          aria-pressed={mine === 'like'}
-          aria-label={`Нравится: ${course.likesCount ?? 0}`}
-        >
-          👍 <span>{course.likesCount ?? 0}</span>
-        </button>
-        <button
-          type="button"
-          className={mine === 'dislike' ? `${styles.button} ${styles.active}` : styles.button}
-          onClick={() => vote('dislike')}
-          disabled={!canVote || busy}
-          aria-pressed={mine === 'dislike'}
-          aria-label={`Не нравится: ${course.dislikesCount ?? 0}`}
-        >
-          👎 <span>{course.dislikesCount ?? 0}</span>
-        </button>
-      </div>
+      <RatingControl
+        likes={course.likesCount ?? 0}
+        dislikes={course.dislikesCount ?? 0}
+        mine={mine}
+        onVote={vote}
+        disabled={!canVote || busy}
+      />
       {!user && (
         <span className={styles.hint}>
           <Link to="/login">Войдите</Link>, чтобы оценить курс

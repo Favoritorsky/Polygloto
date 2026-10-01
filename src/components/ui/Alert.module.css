@@ -16,6 +16,7 @@
 
 .body {
   flex: 1;
+  min-width: 0;
 }
 
 .action {
@@ -43,4 +44,16 @@
 .info {
   background: var(--color-info-bg);
   border-color: var(--color-info-border);
+}
+
+/* На узком экране кнопка действия — под текстом, а не сбоку. */
+@media (max-width: 560px) {
+  .alert {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .action {
+    flex-shrink: 1;
+  }
 }
