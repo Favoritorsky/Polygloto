@@ -8,6 +8,7 @@ import Field from '../../components/ui/Field.jsx';
 import SaveIndicator from '../../components/ui/SaveIndicator.jsx';
 import { useAutosave } from '../../hooks/useAutosave.js';
 import { deleteCourse, updateCourseMeta, validateCourseMeta } from '../../services/courseService.js';
+import { exportCourse } from '../../services/courseTransferService.js';
 import { toUserMessage } from '../../services/errors.js';
 import { useCourseEditor } from './courseEditorContext.js';
 import styles from './SettingsTab.module.css';
@@ -54,6 +55,30 @@ export default function SettingsTab() {
     }
   }
 
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
+  async function handleExport() {
+    setExporting(true);
+    setExportError('');
+    try {
+      await flush?.();
+      const { fileName, json } = await exportCourse(courseId);
+      const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      // Ссылка должна быть в документе, иначе часть браузеров игнорирует имя файла.
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) {
+      setExportError(toUserMessage(err));
+    } finally {
+      setExporting(false);
+    }
+  }
+
   async function handleDelete() {
     if (!window.confirm(`Удалить курс «${course.title}» навсегда? Опубликованная версия тоже исчезнет.`)) return;
     setDeleting(true);
@@ -76,12 +101,24 @@ export default function SettingsTab() {
         </div>
         <Field label="Название" error={errors.title}>
           {(p) => (
-            <input {...p} value={form.title} maxLength={LIMITS.COURSE_TITLE_MAX} readOnly={readOnly} onChange={(e) => change({ title: e.target.value })} />
+            <input
+              {...p}
+              value={form.title}
+              maxLength={LIMITS.COURSE_TITLE_MAX}
+              readOnly={readOnly}
+              onChange={(e) => change({ title: e.target.value })}
+            />
           )}
         </Field>
         <Field label="Язык" error={errors.language} hint="По этому полю курс находят в каталоге.">
           {(p) => (
-            <input {...p} value={form.language} maxLength={LIMITS.COURSE_LANGUAGE_MAX} readOnly={readOnly} onChange={(e) => change({ language: e.target.value })} />
+            <input
+              {...p}
+              value={form.language}
+              maxLength={LIMITS.COURSE_LANGUAGE_MAX}
+              readOnly={readOnly}
+              onChange={(e) => change({ language: e.target.value })}
+            />
           )}
         </Field>
         <Field label="Описание" error={errors.description}>
@@ -102,6 +139,18 @@ export default function SettingsTab() {
         <h2>Категории разметки текста</h2>
         {errors.categories && <Alert tone="error">{errors.categories}</Alert>}
         <CategoryEditor categories={form.categories} readOnly={readOnly} onChange={(categories) => change({ categories })} />
+      </section>
+
+      <section className={styles.card}>
+        <h2>Экспорт</h2>
+        <p>
+          Файл JSON с текущей рабочей версией: уроки, справочник, словарь, категории и аудиозаписи. Его можно сохранить как резервную копию
+          или загрузить как новый курс через «Импорт из JSON» в «Моих курсах».
+        </p>
+        {exportError && <Alert tone="error">{exportError}</Alert>}
+        <Button variant="secondary" onClick={handleExport} loading={exporting}>
+          Скачать курс (JSON)
+        </Button>
       </section>
 
       <section className={`${styles.card} ${styles.danger}`}>

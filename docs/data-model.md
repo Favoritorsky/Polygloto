@@ -433,6 +433,18 @@ Firestore не поддерживает вложенные массивы, по�
 
 Файл загружается только по нажатию «Слушать», не вместе с уроком.
 
+## Файл экспорта курса (v2)
+
+`shared/courseExport.js`. JSON `{ format: 'polygloto-course', version: 1,
+exportedAt, course: { title, language, description, categories }, lessons:
+[{ title, blocks }], reference: [...], dictionary: [{ id, word, translation,
+partOfSpeech, examples, notes }], audio: [{ id, dataUrl, name }] }`. Уроки и
+разделы — в порядке курса; id слов и аудио сохраняются, чтобы ссылки из
+текста (`dictRef`, AudioRef) работали в копии. Импорт создаёт новый черновик и
+пропускает всё через те же функции очистки (неизвестные блоки, поля и
+недопустимые ссылки отбрасываются, о пропусках — предупреждения). Новая
+версия формата повышает `version`; старые версии продолжают читаться.
+
 ## Файлы
 
 Firebase Storage не используется: на тарифе Spark новые бакеты недоступны.
