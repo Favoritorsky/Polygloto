@@ -7,18 +7,20 @@ import AsyncState from '../../components/ui/AsyncState.jsx';
 import Button from '../../components/ui/Button.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
 import { useReactions } from '../../hooks/useReactions.js';
-import { useAsync } from '../../hooks/useSubscription.js';
+import { useAsync, useSubscription } from '../../hooks/useSubscription.js';
 import { toUserMessage } from '../../services/errors.js';
 import { getPublicSection } from '../../services/publicCourseService.js';
+import { subscribeToLessonProgress } from '../../services/srsService.js';
 import { toggleReaction } from '../../services/reactionService.js';
 import { useCoursePage } from './coursePageContext.js';
+import LessonComplete from './LessonComplete.jsx';
 import styles from './SectionReader.module.css';
 
 const PARAM = { lessons: 'lesson', reference: 'section' };
 
 /** Чтение уроков / справочника: оглавление, контент, навигация, реакции на урок. */
 export default function SectionReader({ kind }) {
-  const { course, dictionary } = useCoursePage();
+  const { course, dictionary, review } = useCoursePage();
   const { user, isBanned } = useAuth();
   const [params, setParams] = useSearchParams();
   const [reactionError, setReactionError] = useState('');
@@ -44,6 +46,11 @@ export default function SectionReader({ kind }) {
     () => getPublicSection(course.id, kind, current.id),
     current ? `${course.id}/${kind}/${current.id}/${course.updatedAt?.toMillis?.() ?? ''}` : null,
   );
+  const progress = useSubscription(
+    (onData, onError) => subscribeToLessonProgress(user.uid, course.id, onData, onError),
+    kind === 'lessons' && user ? `${user.uid}/${course.id}` : null,
+  );
+  const completed = progress.data ?? new Set();
   const reactions = useReactions(course.id, 'lesson', kind === 'lessons' && current ? [current.id] : [], user?.uid);
 
   async function handleReaction(emoji) {
@@ -72,6 +79,11 @@ export default function SectionReader({ kind }) {
                 onClick={() => select(item.id)}
               >
                 <span className={styles.number}>{i + 1}.</span> {item.title || 'Без названия'}
+                {completed.has(item.id) && (
+                  <span className={styles.check} aria-label="пройден" title="Урок пройден">
+                    ✓
+                  </span>
+                )}
               </button>
             </li>
           ))}
@@ -81,9 +93,25 @@ export default function SectionReader({ kind }) {
         <h2 className={styles.title}>{current.title || 'Без названия'}</h2>
         <AsyncState loading={section.loading} error={section.error} onRetry={section.retry} empty={section.data === null} emptyText="Раздел не найден.">
           {section.data && (
-            <ContentRenderer blocks={section.data.blocks} categories={course.categories} dictionary={dictionary.index} courseId={course.id} />
+            <ContentRenderer
+              blocks={section.data.blocks}
+              categories={course.categories}
+              dictionary={dictionary.index}
+              courseId={course.id}
+              review={review}
+            />
           )}
         </AsyncState>
+        {kind === 'lessons' && section.data && !dictionary.loading && (
+          <LessonComplete
+            uid={user?.uid}
+            courseId={course.id}
+            lessonId={current.id}
+            blocks={section.data.blocks}
+            dictionaryIndex={dictionary.index}
+            completed={completed.has(current.id)}
+          />
+        )}
         {kind === 'lessons' && (
           <div className={styles.reactions}>
             <ReactionBar

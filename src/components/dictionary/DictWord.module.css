@@ -52,3 +52,13 @@
   opacity: 0.75;
   font-style: italic;
 }
+
+/* Мостик над подсказкой: мышь доходит до кнопки «В повторение», не закрывая её. */
+.tooltip::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -8px;
+  height: 8px;
+}

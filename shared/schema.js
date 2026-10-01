@@ -32,6 +32,12 @@ export const SUBCOLLECTIONS = Object.freeze({
   RATINGS: 'ratings',
 });
 
+/** Личные подколлекции users/{uid} (видит только владелец). */
+export const USER_SUBCOLLECTIONS = Object.freeze({
+  SRS_CARDS: 'srsCards',
+  LESSON_PROGRESS: 'lessonProgress',
+});
+
 /** Подколлекции с контентом, которые копируются в publicCourses при одобрении. */
 export const CONTENT_SUBCOLLECTIONS = Object.freeze([
   SUBCOLLECTIONS.LESSONS,

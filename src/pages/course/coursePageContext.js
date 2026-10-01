@@ -1,6 +1,9 @@
 import { createContext, useContext } from 'react';
 
-/** { course (publicCourses), dictionary: { entries, index, loading, error, retry } } */
+/**
+ * { course (publicCourses), dictionary: { entries, index, loading, error, retry },
+ *   review: { wordIds: Set, adding: Set, add(entry) } | null — повторение, только для вошедших }
+ */
 export const CoursePageContext = createContext(null);
 
 export function useCoursePage() {

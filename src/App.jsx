@@ -13,6 +13,7 @@ import RegisterPage from './pages/auth/RegisterPage.jsx';
 import MyCoursesPage from './pages/courses/MyCoursesPage.jsx';
 import CatalogPage from './pages/catalog/CatalogPage.jsx';
 import DemoCoursePage from './pages/demo/DemoCoursePage.jsx';
+import ReviewPage from './pages/review/ReviewPage.jsx';
 import ProfilePage from './pages/profile/ProfilePage.jsx';
 import CoursePage from './pages/course/CoursePage.jsx';
 import CourseEditorPage from './pages/editor/CourseEditorPage.jsx';
@@ -66,6 +67,14 @@ export default function App() {
             element={
               <RequireAuth adminOnly>
                 <ReviewCoursePage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="review"
+            element={
+              <RequireAuth>
+                <ReviewPage />
               </RequireAuth>
             }
           />

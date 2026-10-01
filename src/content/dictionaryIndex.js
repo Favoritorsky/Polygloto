@@ -77,3 +77,24 @@ export function filterDictionary(entries, { search = '', partOfSpeech = 'all', s
   filtered.sort((a, b) => collator.compare(a[key] ?? '', b[key] ?? '') * (dir === 'desc' ? -1 : 1) || collator.compare(a.word, b.word));
   return filtered;
 }
+
+/**
+ * Слова словаря, встречающиеся в уроке: ручные привязки (dictRef) и
+ * автоматические совпадения в тексте абзацев и заголовков. Порядок — как в
+ * тексте, без повторов. Нужен, чтобы добавить слова урока в повторение.
+ */
+export function collectLessonWords(blocks, index) {
+  if (!index || index.size === 0) return [];
+  const found = new Map();
+  const add = (entry) => entry && !found.has(entry.id) && found.set(entry.id, entry);
+  for (const block of blocks ?? []) {
+    for (const leaf of block.children ?? []) {
+      if (leaf.dictRef) {
+        add(index.byId.get(leaf.dictRef));
+        continue;
+      }
+      for (const segment of segmentText(leaf.text ?? '', index)) segment.entries?.forEach(add);
+    }
+  }
+  return [...found.values()];
+}

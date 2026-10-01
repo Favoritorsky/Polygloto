@@ -107,6 +107,66 @@ service cloud.firestore {
           && onlyChanges(['banned']) && request.resource.data.banned is bool);
 
       allow delete: if false;
+
+      // ---------- users/{uid}/srsCards/{courseId_wordId} — личные карточки повторения ----------
+      // Видит и меняет только владелец. Слово берётся из опубликованного словаря
+      // курса и должно с ним совпадать. Повторение разрешено только для карточки,
+      // срок которой наступил; расписание проверяется по форме (shared/srs.js).
+      function validSrsSchedule(d) {
+        return d.interval is int && d.interval >= 0 && d.interval <= 3650
+          && d.easeFactor is number && d.easeFactor >= 1.3 && d.easeFactor <= 3.0
+          && d.repetitions is int && d.repetitions >= 0;
+      }
+
+      match /srsCards/{cardId} {
+        allow read, delete: if isSelf(uid);
+        allow create: if isSelf(uid) && createsSrsCard(cardId, request.resource.data);
+        allow update: if isSelf(uid) && isSrsReview(resource.data, request.resource.data);
+      }
+
+      function createsSrsCard(cardId, d) {
+        let word = /databases/$(database)/documents/publicCourses/$(d.courseId)/dictionary/$(d.wordId);
+        return d.keys().hasOnly(['courseId', 'wordId', 'word', 'translation', 'interval', 'easeFactor',
+                                 'repetitions', 'dueAt', 'lastReviewedAt', 'createdAt'])
+          && d.courseId is string && d.wordId is string
+          && cardId == d.courseId + '_' + d.wordId
+          && exists(word)
+          && get(word).data.word == d.word
+          && get(word).data.translation == d.translation
+          && d.interval == 0 && d.easeFactor == 2.5 && d.repetitions == 0
+          && d.dueAt == request.time && d.lastReviewedAt == null && d.createdAt == request.time;
+      }
+
+      // «Забыл»: повторения с нуля, показать в течение часа (клиент ставит +10 минут).
+      // Вспомнил (любая степень): повторений +1, срок — через interval дней.
+      // Срок считает клиент по своим часам, поэтому допуск — час в обе стороны.
+      function isSrsReview(old, d) {
+        let due = request.time + duration.value(d.interval, 'd');
+        return request.resource.data.diff(old).affectedKeys()
+            .hasOnly(['interval', 'easeFactor', 'repetitions', 'dueAt', 'lastReviewedAt'])
+          && old.dueAt <= request.time
+          && d.lastReviewedAt == request.time
+          && validSrsSchedule(d)
+          && d.dueAt is timestamp
+          && (
+            (d.interval == 0 && d.repetitions == 0
+              && d.dueAt > request.time && d.dueAt < request.time + duration.value(1, 'h'))
+            || (d.interval >= 1 && d.repetitions == old.repetitions + 1
+              && d.dueAt > due - duration.value(1, 'h') && d.dueAt < due + duration.value(1, 'h'))
+          );
+      }
+
+      // ---------- users/{uid}/lessonProgress/{courseId_lessonId} — пройденные уроки ----------
+      match /lessonProgress/{progressId} {
+        allow read, delete: if isSelf(uid);
+        allow create: if isSelf(uid)
+          && request.resource.data.keys().hasOnly(['courseId', 'lessonId', 'completedAt'])
+          && request.resource.data.courseId is string && request.resource.data.lessonId is string
+          && progressId == request.resource.data.courseId + '_' + request.resource.data.lessonId
+          && exists(/databases/$(database)/documents/publicCourses/$(request.resource.data.courseId)/lessons/$(request.resource.data.lessonId))
+          && request.resource.data.completedAt == request.time;
+        allow update: if false;
+      }
     }
 
     // ---------- rateLimits/{uid} ----------

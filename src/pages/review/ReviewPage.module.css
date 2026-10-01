@@ -1,0 +1,74 @@
+.page {
+  max-width: 40rem;
+  margin: 0 auto;
+}
+
+.progress {
+  color: var(--color-text-muted);
+  margin: 0 0 0.75rem;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  min-height: 14rem;
+  padding: 2rem 1.5rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  text-align: center;
+}
+
+.word {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 2.25rem;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+.answer {
+  margin: 0;
+  font-size: 1.35rem;
+  color: var(--color-primary);
+  overflow-wrap: anywhere;
+}
+
+.hint {
+  margin: 0;
+  color: var(--color-text-muted);
+}
+
+.grades {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.grades button {
+  flex-direction: column;
+  min-width: 7.5rem;
+}
+
+.grades small {
+  font-weight: 400;
+  opacity: 0.8;
+}
+
+.empty {
+  padding: 2rem 1.5rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  margin-bottom: 1rem;
+}
+
+.empty h2 {
+  margin-top: 0;
+}

@@ -1,13 +1,16 @@
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import RatingButtons from '../../components/course/RatingButtons.jsx';
 import DictionaryBrowser from '../../components/dictionary/DictionaryBrowser.jsx';
 import AsyncState from '../../components/ui/AsyncState.jsx';
 import Tabs from '../../components/ui/Tabs.jsx';
 import { buildDictionaryIndex } from '../../content/dictionaryIndex.js';
+import { useAuth } from '../../hooks/useAuth.js';
 import { useSubscription } from '../../hooks/useSubscription.js';
 import { subscribeToDictionary } from '../../services/dictionaryService.js';
 import { subscribeToPublicCourse } from '../../services/publicCourseService.js';
+import { addWordsToReview, subscribeToCourseCards } from '../../services/srsService.js';
+import ReviewButton from '../../components/review/ReviewButton.jsx';
 import CommentsSection from './CommentsSection.jsx';
 import { CoursePageContext } from './coursePageContext.js';
 import SectionReader from './SectionReader.jsx';
@@ -36,10 +39,40 @@ export default function CoursePage() {
     course ? courseId : null,
   );
   const entries = dictionarySub.data;
+
+  // Повторение: какие слова курса уже у читателя в карточках.
+  const { user } = useAuth();
+  const uid = user?.uid ?? null;
+  const cardsSub = useSubscription(
+    (onData, onError) => subscribeToCourseCards(uid, courseId, onData, onError),
+    uid && course ? `${uid}/${courseId}` : null,
+  );
+  const [adding, setAdding] = useState(() => new Set());
+  const addToReview = useCallback(
+    async (entry) => {
+      setAdding((s) => new Set(s).add(entry.id));
+      try {
+        await addWordsToReview(uid, courseId, [entry]);
+      } finally {
+        setAdding((s) => {
+          const next = new Set(s);
+          next.delete(entry.id);
+          return next;
+        });
+      }
+    },
+    [uid, courseId],
+  );
+  const review = useMemo(
+    () => (uid ? { wordIds: cardsSub.data ?? new Set(), adding, add: addToReview } : null),
+    [uid, cardsSub.data, adding, addToReview],
+  );
+
   const value = useMemo(
     () =>
       course && {
         course,
+        review,
         dictionary: {
           entries,
           index: buildDictionaryIndex(entries ?? []),
@@ -48,7 +81,7 @@ export default function CoursePage() {
           retry: dictionarySub.retry,
         },
       },
-    [course, entries, dictionarySub.loading, dictionarySub.error, dictionarySub.retry],
+    [course, review, entries, dictionarySub.loading, dictionarySub.error, dictionarySub.retry],
   );
 
   function changeTab(id) {
@@ -96,7 +129,10 @@ export default function CoursePage() {
                     empty={entries?.length === 0}
                     emptyText="Словарь курса пока пуст."
                   >
-                    <DictionaryBrowser entries={entries ?? []} />
+                    <DictionaryBrowser
+                      entries={entries ?? []}
+                      renderActions={review ? (entry) => <ReviewButton entry={entry} review={review} /> : undefined}
+                    />
                   </AsyncState>
                 )}
                 {tab === 'comments' && <CommentsSection />}

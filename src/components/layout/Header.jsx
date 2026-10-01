@@ -3,6 +3,7 @@ import Avatar from '../profile/Avatar.jsx';
 import ThemeToggle from './ThemeToggle.jsx';
 import Button from '../ui/Button.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
+import { useDueCount } from '../../hooks/useDueCount.js';
 import { logout } from '../../services/authService.js';
 import styles from './Header.module.css';
 
@@ -11,6 +12,7 @@ const navClass = ({ isActive }) => (isActive ? styles.active : undefined);
 export default function Header() {
   const { user, profile, isAdmin, initializing } = useAuth();
   const navigate = useNavigate();
+  const due = useDueCount(user?.uid);
 
   async function handleLogout() {
     await logout();
@@ -30,6 +32,16 @@ export default function Header() {
           {user && (
             <NavLink to="/my-courses" className={navClass}>
               Мои курсы
+            </NavLink>
+          )}
+          {user && (
+            <NavLink to="/review" className={navClass}>
+              Повторение
+              {due > 0 && (
+                <span className={styles.badge} aria-label={`к повторению: ${due}`}>
+                  {due > 99 ? '99+' : due}
+                </span>
+              )}
             </NavLink>
           )}
           {isAdmin && (

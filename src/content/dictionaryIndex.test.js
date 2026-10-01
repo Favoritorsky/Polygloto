@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildDictionaryIndex, filterDictionary, segmentText } from './dictionaryIndex.js';
+import { buildDictionaryIndex, collectLessonWords, filterDictionary, segmentText } from './dictionaryIndex.js';
 
 const entries = [
   { id: '1', word: 'toki', translation: 'язык, речь', partOfSpeech: 'noun' },
@@ -53,5 +53,34 @@ describe('filterDictionary', () => {
 
   it('сортирует по переводу по убыванию', () => {
     expect(filterDictionary(entries, { sort: 'translation-desc' }).map((e) => e.translation)[0]).toBe('язык, речь');
+  });
+});
+
+describe('collectLessonWords', () => {
+  const index = buildDictionaryIndex([
+    { id: 'hola', word: 'hola' },
+    { id: 'me-llamo', word: 'me llamo' },
+    { id: 'yo', word: 'yo' },
+    { id: 'ana', word: 'Ana' },
+  ]);
+
+  it('находит слова и словосочетания в абзацах и заголовках без повторов, в порядке текста', () => {
+    const blocks = [
+      { type: 'heading', children: [{ text: '¡Hola!' }] },
+      { type: 'paragraph', children: [{ text: 'Yo me llamo Pablo. ¡Hola, ' }, { text: 'hola', bold: true }] },
+      { type: 'table', rows: [{ cells: ['Ana'] }] },
+    ];
+    expect(collectLessonWords(blocks, index).map((e) => e.id)).toEqual(['hola', 'yo', 'me-llamo']);
+  });
+
+  it('ручная привязка dictRef учитывается, даже если текст не совпадает; битая — пропускается', () => {
+    const blocks = [{ type: 'paragraph', children: [{ text: 'Анечка', dictRef: 'ana' }, { text: 'x', dictRef: 'нет' }] }];
+    expect(collectLessonWords(blocks, index).map((e) => e.id)).toEqual(['ana']);
+  });
+
+  it('пустой словарь или урок — пустой список', () => {
+    expect(collectLessonWords([], index)).toEqual([]);
+    expect(collectLessonWords([{ type: 'paragraph', children: [{ text: 'hola' }] }], buildDictionaryIndex([]))).toEqual([]);
+    expect(collectLessonWords(undefined, null)).toEqual([]);
   });
 });

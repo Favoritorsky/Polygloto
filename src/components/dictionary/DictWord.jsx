@@ -1,4 +1,6 @@
 import { useId, useState } from 'react';
+import { useContentContext } from '../content/contentContext.js';
+import ReviewButton from '../review/ReviewButton.jsx';
 import { POS_LABELS } from './partsOfSpeech.js';
 import styles from './DictWord.module.css';
 
@@ -11,6 +13,7 @@ export default function DictWord({ entries, className, style, title, children })
   const [pinned, setPinned] = useState(false);
   const id = useId();
   const visible = open || pinned;
+  const { review } = useContentContext();
 
   return (
     <span
@@ -24,7 +27,9 @@ export default function DictWord({ entries, className, style, title, children })
       onMouseEnter={() => setOpen(true)}
       onMouseLeave={() => setOpen(false)}
       onFocus={() => setOpen(true)}
-      onBlur={() => {
+      onBlur={(e) => {
+        // Фокус ушёл на кнопку внутри подсказки — подсказку не закрываем.
+        if (e.currentTarget.contains(e.relatedTarget)) return;
         setOpen(false);
         setPinned(false);
       }}
@@ -46,6 +51,7 @@ export default function DictWord({ entries, className, style, title, children })
               </span>
               <span className={styles.translation}>{entry.translation}</span>
               {entry.examples?.[0] && <span className={styles.example}>{entry.examples[0]}</span>}
+              {review && <ReviewButton entry={entry} review={review} compact />}
             </span>
           ))}
         </span>

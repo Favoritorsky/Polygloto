@@ -1,0 +1,38 @@
+.button {
+  border: 1px solid var(--color-primary);
+  background: transparent;
+  color: var(--color-primary);
+  border-radius: 999px;
+  padding: 0.1rem 0.6rem;
+  font: inherit;
+  font-size: 0.8rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.button:hover:not(:disabled) {
+  background: var(--color-primary-tint);
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Внутри тёмной подсказки словаря: цвета подсказки, а не страницы. */
+.compact {
+  align-self: flex-start;
+  border-color: currentColor;
+  color: inherit;
+}
+
+.done {
+  font-size: 0.8rem;
+  color: var(--color-success);
+  white-space: nowrap;
+}
+
+.error {
+  font-size: 0.8rem;
+  color: var(--color-danger);
+}
