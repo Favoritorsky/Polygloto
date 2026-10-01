@@ -42,7 +42,7 @@ try {
   const pron = page.getByRole('group', { name: 'Произношение (необязательно)' });
   await pron.getByLabel('Аудиофайл').setInputFiles(wavFile);
   await pron.getByText('файл курса').waitFor();
-  await page.getByRole('button', { name: 'Добавить' }).click();
+  await page.getByRole('button', { name: 'Добавить', exact: true }).click();
   const entry = page.locator('li', { hasText: 'привет' }).first();
   await entry.getByRole('button', { name: 'Произношение: hola' }).waitFor();
   assert(true, 'у слова в словаре кнопка произношения');

@@ -17,13 +17,13 @@ try {
     await page.getByLabel('Слово', { exact: true }).fill(word);
     await page.getByLabel('Перевод').fill(translation);
     await page.getByLabel('Часть речи').first().selectOption(pos);
-    await page.getByRole('button', { name: 'Добавить' }).click();
+    await page.getByRole('button', { name: 'Добавить', exact: true }).click();
     await page.locator('li', { hasText: translation }).first().waitFor({ timeout: 8000 }).catch(async (e) => {
       await page.screenshot({ path: '/tmp/claude-0/-home-claude/88bf146b-844e-5c6b-95e0-51637bf40d13/scratchpad/fail6.png', fullPage: true });
       throw e;
     });
   }
-  await page.getByRole('button', { name: 'Добавить' }).click();
+  await page.getByRole('button', { name: 'Добавить', exact: true }).click();
   await page.getByText('Слово: от 1 до 100 символов.').waitFor();
   assert(true, 'пустое слово не отправляется (клиентская валидация)');
   await addWord('toki', 'язык, речь', 'noun');

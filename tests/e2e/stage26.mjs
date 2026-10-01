@@ -3,6 +3,10 @@ import { BASE, assert, launch, newPage, register, uidOf, uniqueEmail } from './l
 import { Timestamp, adminDb, seedPublishedCourse } from './seed.mjs';
 
 const DAY = 86400000;
+// Имена уникальны на каждый запуск: рейтинг в эмуляторе хранит прошлые прогоны.
+const tag = Date.now().toString(36).slice(-5);
+const CHAMP = `Чемпион ${tag}`;
+const SECOND = `Второй ${tag}`;
 const courseId = await seedPublishedCourse({
   title: `Очки ${Date.now().toString(36)}`,
   lessons: [
@@ -23,7 +27,7 @@ const browser = await launch();
 try {
   const page = await newPage(browser);
   const email = uniqueEmail('stage26');
-  await register(page, { name: 'Чемпион', email });
+  await register(page, { name: CHAMP, email });
   const uid = await uidOf(email);
   await page.getByLabel('Мой прогресс, серия: 0 дн.').waitFor();
   assert(true, 'в шапке серия 0 до первых занятий');
@@ -82,7 +86,7 @@ try {
 
   // Рейтинг: второй участник с меньшими очками ниже
   const other = await newPage(browser);
-  await register(other, { name: 'Второй', email: uniqueEmail('stage26b') });
+  await register(other, { name: SECOND, email: uniqueEmail('stage26b') });
   await other.goto(`${BASE}/course/${courseId}`);
   const t2 = other.locator('form[aria-label^="Задание"]');
   await t2.getByLabel('Ваш ответ').fill('nope');
@@ -93,12 +97,12 @@ try {
   const rows = other.locator('ol li');
   await rows.first().waitFor();
   const texts = await rows.allInnerTexts();
-  const champ = texts.findIndex((t) => t.includes('Чемпион'));
-  const second = texts.findIndex((t) => t.includes('Второй'));
+  const champ = texts.findIndex((t) => t.includes(CHAMP));
+  const second = texts.findIndex((t) => t.includes(SECOND));
   assert(champ >= 0 && second > champ, `в рейтинге недели Чемпион выше Второго (${champ}, ${second})`);
   assert(texts[second].includes('(вы)') && texts[second].trim().endsWith('2'), 'своя строка отмечена, у второго 2 очка');
   await other.getByRole('tab', { name: 'За всё время' }).click();
-  await other.locator('ol li', { hasText: 'Чемпион' }).waitFor();
+  await other.locator('ol li', { hasText: CHAMP }).waitFor();
   assert(true, 'рейтинг за всё время');
 
   // Профиль: значок «Выпускник», серия и очки
