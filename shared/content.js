@@ -9,6 +9,7 @@
  */
 import { LIMITS, PALETTE } from './schema.js';
 import { sanitizeAudioRef } from './audio.js';
+import { GLOSS_LIMITS } from './gloss.js';
 import { sanitizeTaskData, TASK_TYPE_IDS } from './tasks.js';
 
 export const BLOCK_TYPES = Object.freeze({
@@ -16,7 +17,7 @@ export const BLOCK_TYPES = Object.freeze({
   HEADING: 'heading',
   TABLE: 'table',
   TASK: 'task',
-  // Зарезервировано для v2: аудио-вставки и подстрочный разбор (interlinear gloss).
+  // v2: аудиовставки и подстрочный разбор (interlinear gloss).
   AUDIO: 'audio',
   GLOSS: 'gloss',
 });
@@ -125,6 +126,14 @@ export function sanitizeBlock(block, options = {}) {
         type: BLOCK_TYPES.AUDIO,
         audio: sanitizeAudioRef(block.audio),
         caption: cleanString(block.caption, CONTENT_LIMITS.AUDIO_CAPTION_MAX),
+      };
+    case BLOCK_TYPES.GLOSS:
+      // Подстрочный разбор (v2): исходная строка, разбор по словам, перевод.
+      return {
+        type: BLOCK_TYPES.GLOSS,
+        source: cleanString(block.source, GLOSS_LIMITS.LINE_MAX),
+        gloss: cleanString(block.gloss, GLOSS_LIMITS.LINE_MAX),
+        translation: cleanString(block.translation, GLOSS_LIMITS.LINE_MAX),
       };
     default:
       return null;

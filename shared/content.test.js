@@ -43,6 +43,12 @@ describe('sanitizeBlocks', () => {
     expect(empty).toEqual({ type: 'audio', audio: null, caption: '' });
   });
 
+  it('подстрочный разбор (v2): три строки с ограничением длины, лишние поля отброшены', () => {
+    const [g] = sanitizeBlocks([{ type: 'gloss', source: 'los gatos', gloss: 'DEF.PL кот-PL', translation: 'кошки', html: '<b>', extra: 1 }]);
+    expect(g).toEqual({ type: 'gloss', source: 'los gatos', gloss: 'DEF.PL кот-PL', translation: 'кошки' });
+    expect(sanitizeBlocks([{ type: 'gloss', source: 'x'.repeat(1200) }])[0]).toEqual({ type: 'gloss', source: 'x'.repeat(1000), gloss: '', translation: '' });
+  });
+
   it('произношение слова: только допустимая ссылка', () => {
     expect(sanitizeWord({ word: 'hola', translation: 'привет', audio: { kind: 'file', id: 'a1' } }, ['other']).audio).toEqual({
       kind: 'file',

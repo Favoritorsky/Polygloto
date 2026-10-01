@@ -7,11 +7,13 @@
  */
 import { BLOCK_TYPES } from '../../../shared/content.js';
 import AudioElementEditor from './elements/AudioElementEditor.jsx';
+import GlossElementEditor from './elements/GlossElementEditor.jsx';
 import TableElementEditor from './elements/TableElementEditor.jsx';
 
 export const elementEditors = {
   [BLOCK_TYPES.TABLE]: TableElementEditor,
   [BLOCK_TYPES.AUDIO]: AudioElementEditor,
+  [BLOCK_TYPES.GLOSS]: GlossElementEditor,
 };
 
 export const insertables = [
@@ -32,6 +34,12 @@ export const insertables = [
     label: 'Аудио',
     group: 'Блоки',
     create: () => ({ type: BLOCK_TYPES.AUDIO, audio: null, caption: '' }),
+  },
+  {
+    id: 'gloss',
+    label: 'Подстрочный разбор',
+    group: 'Блоки',
+    create: () => ({ type: BLOCK_TYPES.GLOSS, source: '', gloss: '', translation: '' }),
   },
 ];
 

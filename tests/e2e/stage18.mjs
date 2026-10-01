@@ -17,6 +17,11 @@ try {
   assert((await lesson.locator('span[class*="italic"]').count()) > 0, 'есть курсив');
   assert((await lesson.locator('span[style*="color: rgb(230, 57, 70)"]').count()) > 0, 'есть цветной текст');
 
+  // Подстрочный разбор (v2): столбцы слово/разбор, пометы капителью.
+  const gloss = lesson.getByRole('figure', { name: 'Подстрочный разбор' });
+  assert((await gloss.locator('abbr').count()) === 4, 'разбор: 4 грамматические пометы капителью (1sg, refl, 1sg, prs)');
+  assert((await gloss.getByText('Меня зовут Пабло').count()) === 1, 'разбор: перевод под строками');
+
   // Таблица с заголовками по строке и по столбцу.
   const conj = lesson.locator('table', { hasText: 'nosotros hablamos' });
   assert((await conj.locator('th[scope="row"]').allInnerTexts()).join('|') === '1-е лицо|2-е лицо|3-е лицо', 'таблица hablar: заголовки строк');
