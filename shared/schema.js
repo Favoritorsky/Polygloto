@@ -27,6 +27,7 @@ export const SUBCOLLECTIONS = Object.freeze({
   LESSONS: 'lessons',
   REFERENCE: 'reference',
   DICTIONARY: 'dictionary',
+  AUDIO: 'audio',
   COMMENTS: 'comments',
   REACTIONS: 'reactions',
   RATINGS: 'ratings',
@@ -137,6 +138,7 @@ export const LIMITS = Object.freeze({
 export const RATE_LIMITS = Object.freeze({
   CREATE_COURSE_SECONDS: 30,
   ADD_COMMENT_SECONDS: 15,
+  UPLOAD_AUDIO_SECONDS: 5,
 });
 
 /** Задержка автосохранения черновика (мс). */

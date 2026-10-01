@@ -7,6 +7,7 @@
  */
 import {
   collection,
+  deleteDoc,
   doc,
   getCountFromServer,
   getDoc,
@@ -17,6 +18,7 @@ import {
   query,
   runTransaction,
   serverTimestamp,
+  setDoc,
   startAt,
   endAt,
   updateDoc,
@@ -24,6 +26,7 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { CATALOG_LANGUAGES_DOC, COLLECTIONS, CONTENT_SUBCOLLECTIONS, COURSE_STATUS, SUBCOLLECTIONS } from '../../shared/schema.js';
+import { collectAudioIds, isValidAudioDataUrl } from '../../shared/audio.js';
 import { buildPublicSnapshot } from '../../shared/publicSnapshot.js';
 import { BATCH_SIZE } from './batchUtils.js';
 import { UserFacingError } from './errors.js';
@@ -37,7 +40,10 @@ export function subscribeToReviewQueue(onData, onError) {
   return onSnapshot(
     q,
     (snap) => {
-      const courses = snap.docs.map((d) => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) }));
+      const courses = snap.docs.map((d) => ({
+        id: d.id,
+        ...d.data({ serverTimestamps: 'estimate' }),
+      }));
       onData(courses.sort((a, b) => millis(a.submittedAt) - millis(b.submittedAt)));
     },
     onError,
@@ -66,7 +72,13 @@ export async function loadCourseContent(courseId, course) {
     read(SUBCOLLECTIONS.REFERENCE),
     read(SUBCOLLECTIONS.DICTIONARY),
   ]);
-  const snapshot = buildPublicSnapshot({ course, author: null, lessons, reference, dictionary });
+  const snapshot = buildPublicSnapshot({
+    course,
+    author: null,
+    lessons,
+    reference,
+    dictionary,
+  });
   const ordered = (sections, order) => {
     const byId = new Map(sections.map((s) => [s.id, { id: s.id, ...s.data }]));
     return order.map((id) => byId.get(id));
@@ -101,15 +113,41 @@ async function writeSnapshotSections(publicRef, snapshot) {
   }
 }
 
+/**
+ * Копирует в снимок только те аудиофайлы, на которые ссылается опубликованный
+ * контент, и удаляет из снимка больше не нужные. Файлы по одному: каждый — до
+ * полумегабайта, пакет таких записей упёрся бы в лимит размера запроса.
+ */
+async function copySnapshotAudio(courseRef, publicRef, snapshot) {
+  const ids = collectAudioIds([snapshot.lessons, snapshot.reference, snapshot.dictionary]);
+  const target = collection(publicRef, SUBCOLLECTIONS.AUDIO);
+  const existing = await getDocs(target);
+  const present = new Set(existing.docs.map((d) => d.id));
+  for (const d of existing.docs) if (!ids.has(d.id)) await deleteDoc(d.ref);
+  for (const id of ids) {
+    if (present.has(id)) continue; // файлы не меняются (update запрещён), копировать заново не нужно
+    const source = await getDoc(doc(courseRef, SUBCOLLECTIONS.AUDIO, id));
+    if (source.exists() && isValidAudioDataUrl(source.data().dataUrl)) {
+      await setDoc(doc(target, id), { dataUrl: source.data().dataUrl });
+    }
+  }
+}
+
 /** Новые значения счётчиков языков каталога после публикации курса. */
 async function languageCounts(courseId, previous, meta) {
   const count = async (key) =>
     (await getCountFromServer(query(collection(db, COLLECTIONS.PUBLIC_COURSES), where('languageLower', '==', key)))).data().count;
   const result = new Map();
   const wasSame = previous?.languageLower === meta.languageLower;
-  result.set(meta.languageLower, { name: meta.language, count: (await count(meta.languageLower)) + (wasSame ? 0 : 1) });
+  result.set(meta.languageLower, {
+    name: meta.language,
+    count: (await count(meta.languageLower)) + (wasSame ? 0 : 1),
+  });
   if (previous?.languageLower && !wasSame) {
-    result.set(previous.languageLower, { name: previous.language, count: Math.max(0, (await count(previous.languageLower)) - 1) });
+    result.set(previous.languageLower, {
+      name: previous.language,
+      count: Math.max(0, (await count(previous.languageLower)) - 1),
+    });
   }
   return result;
 }
@@ -130,7 +168,11 @@ export async function approveCourse(courseId, moderatorId) {
   if (course.status !== COURSE_STATUS.PENDING_REVIEW) throw new UserFacingError('Курс уже не на проверке.');
   const submittedAt = course.submittedAt?.toMillis?.() ?? null;
 
-  const read = async (name) => (await getDocs(collection(courseRef, name))).docs.map((d) => ({ id: d.id, data: d.data() }));
+  const read = async (name) =>
+    (await getDocs(collection(courseRef, name))).docs.map((d) => ({
+      id: d.id,
+      data: d.data(),
+    }));
   const [lessons, reference, dictionary, authorSnap, previousSnap] = await Promise.all([
     read(SUBCOLLECTIONS.LESSONS),
     read(SUBCOLLECTIONS.REFERENCE),
@@ -138,10 +180,17 @@ export async function approveCourse(courseId, moderatorId) {
     getDoc(doc(db, COLLECTIONS.USERS, course.authorId)),
     getDoc(publicRef),
   ]);
-  const snapshot = buildPublicSnapshot({ course, author: authorSnap.data(), lessons, reference, dictionary });
+  const snapshot = buildPublicSnapshot({
+    course,
+    author: authorSnap.data(),
+    lessons,
+    reference,
+    dictionary,
+  });
   const previous = previousSnap.exists() ? previousSnap.data() : null;
 
   await writeSnapshotSections(publicRef, snapshot);
+  await copySnapshotAudio(courseRef, publicRef, snapshot);
   const counts = await languageCounts(courseId, previous, snapshot.meta);
 
   await runTransaction(db, async (tx) => {
@@ -154,10 +203,21 @@ export async function approveCourse(courseId, moderatorId) {
     // Счётчики оценок сохраняются между версиями; для первой публикации — нули.
     const counters = current.exists()
       ? {}
-      : { likesCount: 0, dislikesCount: 0, score: 0, publishedAt: serverTimestamp() };
+      : {
+          likesCount: 0,
+          dislikesCount: 0,
+          score: 0,
+          publishedAt: serverTimestamp(),
+        };
     tx.set(
       publicRef,
-      { ...snapshot.meta, ...counters, updatedAt: serverTimestamp(), approvedAt: serverTimestamp(), approvedBy: moderatorId },
+      {
+        ...snapshot.meta,
+        ...counters,
+        updatedAt: serverTimestamp(),
+        approvedAt: serverTimestamp(),
+        approvedBy: moderatorId,
+      },
       { merge: true },
     );
     tx.update(courseRef, {
@@ -166,12 +226,14 @@ export async function approveCourse(courseId, moderatorId) {
       hasPublishedVersion: true,
       updatedAt: serverTimestamp(),
     });
-    const items = new Map((metaSnap.exists() ? metaSnap.data().items ?? [] : []).map((i) => [i.key, i]));
+    const items = new Map((metaSnap.exists() ? (metaSnap.data().items ?? []) : []).map((i) => [i.key, i]));
     for (const [key, { name, count }] of counts) {
       if (count > 0) items.set(key, { key, name, count });
       else items.delete(key);
     }
-    tx.set(metaRef, { items: [...items.values()].sort((a, b) => a.name.localeCompare(b.name, 'ru')) });
+    tx.set(metaRef, {
+      items: [...items.values()].sort((a, b) => a.name.localeCompare(b.name, 'ru')),
+    });
   });
 }
 

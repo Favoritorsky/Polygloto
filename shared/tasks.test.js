@@ -1,10 +1,19 @@
 import { describe, expect, it } from 'vitest';
-import { TASK_TYPE_IDS, checkTaskAnswer, normalizeAnswer, sanitizeTaskData, taskProblems } from './tasks.js';
+import { TASK_TYPE_IDS, checkTaskAnswer, normalizeAnswer, orderTokens, sanitizeTaskData, taskProblems } from './tasks.js';
 import { sanitizeBlocks } from './content.js';
 
 describe('реестр', () => {
-  it('содержит все пять типов v1', () => {
-    expect(TASK_TYPE_IDS).toEqual(['multiple_choice', 'fill_blank', 'matching', 'translation', 'free_input']);
+  it('содержит пять типов v1 и три типа v2', () => {
+    expect(TASK_TYPE_IDS).toEqual([
+      'multiple_choice',
+      'fill_blank',
+      'matching',
+      'translation',
+      'free_input',
+      'multiple_select',
+      'sentence_order',
+      'listening',
+    ]);
   });
 });
 
@@ -18,7 +27,10 @@ describe('normalizeAnswer', () => {
 describe('multiple_choice', () => {
   const data = sanitizeTaskData('multiple_choice', {
     question: 'Как «хороший»?',
-    options: [{ id: 'a', text: 'pona' }, { id: 'b', text: 'ike' }],
+    options: [
+      { id: 'a', text: 'pona' },
+      { id: 'b', text: 'ike' },
+    ],
     correctOptionId: 'a',
   });
   it('проверяет выбранный вариант', () => {
@@ -27,7 +39,13 @@ describe('multiple_choice', () => {
     expect(checkTaskAnswer('multiple_choice', data, undefined).correct).toBe(false);
   });
   it('неизвестный правильный id заменяется первым вариантом, дубли id убираются', () => {
-    const d = sanitizeTaskData('multiple_choice', { options: [{ id: 'x', text: '1' }, { id: 'x', text: '2' }], correctOptionId: 'zzz' });
+    const d = sanitizeTaskData('multiple_choice', {
+      options: [
+        { id: 'x', text: '1' },
+        { id: 'x', text: '2' },
+      ],
+      correctOptionId: 'zzz',
+    });
     expect(d.options).toHaveLength(1);
     expect(d.correctOptionId).toBe('x');
   });
@@ -69,7 +87,12 @@ describe('matching', () => {
     expect(checkTaskAnswer('matching', data, {}).correct).toBe(false);
   });
   it('одинаковые правые части взаимозаменяемы', () => {
-    const d = sanitizeTaskData('matching', { pairs: [{ id: 'a', left: 'jan', right: 'человек' }, { id: 'b', left: 'jan ale', right: 'человек' }] });
+    const d = sanitizeTaskData('matching', {
+      pairs: [
+        { id: 'a', left: 'jan', right: 'человек' },
+        { id: 'b', left: 'jan ale', right: 'человек' },
+      ],
+    });
     expect(checkTaskAnswer('matching', d, { a: 'b', b: 'a' }).correct).toBe(true);
   });
 });
@@ -99,5 +122,102 @@ describe('задания внутри контента', () => {
       { type: 'task', taskType: 'eval', data: {} },
     ]);
     expect(blocks).toEqual([{ type: 'task', id: 'b1', taskType: 'free_input', data: { question: 'q', answers: ['a'] } }]);
+  });
+});
+
+describe('multiple_select', () => {
+  const data = sanitizeTaskData('multiple_select', {
+    question: 'Какие слова — глаголы?',
+    options: [
+      { id: 'a', text: 'hablar' },
+      { id: 'b', text: 'casa' },
+      { id: 'c', text: 'comer' },
+      { id: 'd', text: '' },
+    ],
+    correctOptionIds: ['a', 'c', 'c', 'zzz'],
+  });
+  it('засчитывает только ровно все правильные', () => {
+    expect(data.correctOptionIds).toEqual(['a', 'c']);
+    expect(checkTaskAnswer('multiple_select', data, ['a', 'c']).correct).toBe(true);
+    expect(checkTaskAnswer('multiple_select', data, ['c', 'a']).correct).toBe(true);
+    expect(checkTaskAnswer('multiple_select', data, ['a']).correct).toBe(false);
+    expect(checkTaskAnswer('multiple_select', data, ['a', 'b', 'c']).correct).toBe(false);
+    expect(checkTaskAnswer('multiple_select', data, []).correct).toBe(false);
+    expect(checkTaskAnswer('multiple_select', data, null).correct).toBe(false);
+  });
+  it('пустой вариант не влияет на проверку, отмечает ошибки по вариантам', () => {
+    const r = checkTaskAnswer('multiple_select', data, ['a', 'b', 'd']);
+    expect(r.results).toEqual({ a: true, b: false, c: false });
+  });
+  it('без отмеченных правильных задание не готово', () => {
+    const empty = sanitizeTaskData('multiple_select', {
+      question: 'q',
+      options: [
+        { id: 'a', text: '1' },
+        { id: 'b', text: '2' },
+      ],
+      correctOptionIds: [],
+    });
+    expect(taskProblems('multiple_select', empty)).toContain('Не отмечен ни один правильный вариант.');
+    expect(checkTaskAnswer('multiple_select', empty, []).correct).toBe(false);
+    expect(taskProblems('multiple_select', data)).toEqual([]);
+  });
+});
+
+describe('sentence_order', () => {
+  const data = sanitizeTaskData('sentence_order', {
+    instruction: 'Составьте',
+    answers: ['  Yo   me llamo Ana. ', 'Me llamo Ana yo', ''],
+  });
+  it('слова делятся по пробелам, ответы нормализуются', () => {
+    expect(orderTokens(data.answers[0])).toEqual(['Yo', 'me', 'llamo', 'Ana.']);
+    expect(data.answers).toEqual(['Yo me llamo Ana.', 'Me llamo Ana yo']);
+  });
+  it('принимает основной и допустимый порядок, без учёта регистра и точки', () => {
+    expect(checkTaskAnswer('sentence_order', data, ['yo', 'me', 'llamo', 'Ana.']).correct).toBe(true);
+    expect(checkTaskAnswer('sentence_order', data, ['Me', 'llamo', 'Ana.', 'Yo']).correct).toBe(true);
+    expect(checkTaskAnswer('sentence_order', data, ['llamo', 'me', 'Yo', 'Ana.']).correct).toBe(false);
+    expect(checkTaskAnswer('sentence_order', data, 'Yo me llamo Ana').correct).toBe(false);
+  });
+  it('проверяет число слов и состав других вариантов', () => {
+    expect(taskProblems('sentence_order', data)).toEqual([]);
+    expect(taskProblems('sentence_order', sanitizeTaskData('sentence_order', { answers: ['Hola'] }))).not.toHaveLength(0);
+    const other = sanitizeTaskData('sentence_order', { answers: ['Yo me llamo Ana', 'Yo soy Ana'] });
+    expect(taskProblems('sentence_order', other)).toContain('Другие варианты должны состоять из тех же слов, что и первый.');
+  });
+});
+
+describe('listening', () => {
+  const base = {
+    audio: { kind: 'url', url: 'https://upload.wikimedia.org/wikipedia/commons/a/ab/Es-hola.ogg' },
+    question: 'Что прозвучало?',
+    options: [
+      { id: 'a', text: 'hola' },
+      { id: 'b', text: 'adiós' },
+    ],
+    correctOptionId: 'a',
+    answers: ['hola'],
+  };
+  it('режим выбора и режим ввода', () => {
+    const choice = sanitizeTaskData('listening', base);
+    expect(checkTaskAnswer('listening', choice, 'a').correct).toBe(true);
+    expect(checkTaskAnswer('listening', choice, 'b').correct).toBe(false);
+    const input = sanitizeTaskData('listening', { ...base, mode: 'input' });
+    expect(checkTaskAnswer('listening', input, ' Hola! ').correct).toBe(true);
+    expect(checkTaskAnswer('listening', input, 'a').correct).toBe(false);
+    expect(taskProblems('listening', choice)).toEqual([]);
+  });
+  it('без аудио или с недопустимой ссылкой задание не готово', () => {
+    for (const audio of [
+      null,
+      { kind: 'url', url: 'https://evil.example/x.mp3' },
+      { kind: 'url', url: 'javascript:alert(1)' },
+      { kind: 'file', id: '../x' },
+    ]) {
+      const d = sanitizeTaskData('listening', { ...base, audio });
+      expect(d.audio).toBeNull();
+      expect(taskProblems('listening', d)).toContain('Нет аудио.');
+    }
+    expect(sanitizeTaskData('listening', { ...base, audio: { kind: 'file', id: 'abc123' } }).audio).toEqual({ kind: 'file', id: 'abc123' });
   });
 });

@@ -1,3 +1,4 @@
+import AudioSourceProvider from '../../audio/AudioSourceProvider.jsx';
 import { useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { COURSE_STATUS, LIMITS } from '../../../shared/schema.js';
@@ -70,7 +71,13 @@ export default function ReviewCoursePage() {
   }
 
   return (
-    <AsyncState loading={courseSub.loading} error={courseSub.error} onRetry={courseSub.retry} empty={course === null} emptyText="Курс не найден.">
+    <AsyncState
+      loading={courseSub.loading}
+      error={courseSub.error}
+      onRetry={courseSub.retry}
+      empty={course === null}
+      emptyText="Курс не найден."
+    >
       {course && (
         <div>
           <Link to="/admin" className={styles.back}>
@@ -97,7 +104,16 @@ export default function ReviewCoursePage() {
               {rejecting ? (
                 <>
                   <Field label="Причина отклонения" hint="Автор увидит этот текст и сможет исправить курс.">
-                    {(p) => <textarea {...p} rows={3} maxLength={LIMITS.REJECTION_REASON_MAX} value={reason} onChange={(e) => setReason(e.target.value)} autoFocus />}
+                    {(p) => (
+                      <textarea
+                        {...p}
+                        rows={3}
+                        maxLength={LIMITS.REJECTION_REASON_MAX}
+                        value={reason}
+                        onChange={(e) => setReason(e.target.value)}
+                        autoFocus
+                      />
+                    )}
                   </Field>
                   <div className={styles.buttons}>
                     <Button variant="secondary" onClick={() => setRejecting(false)} disabled={Boolean(busy)}>
@@ -122,15 +138,29 @@ export default function ReviewCoursePage() {
           )}
 
           <Tabs tabs={TABS} active={tab} onChange={setTab} label="Содержимое курса" />
-          <AsyncState loading={content.loading} error={content.error} onRetry={content.retry}>
-            {content.data && tab === 'lessons' && (
-              <Sections sections={content.data.lessons} categories={content.data.categories} courseId={courseId} dictionary={dictionary} emptyText="Уроков нет." />
-            )}
-            {content.data && tab === 'reference' && (
-              <Sections sections={content.data.reference} categories={content.data.categories} courseId={courseId} dictionary={dictionary} emptyText="Справочник пуст." />
-            )}
-            {content.data && tab === 'dictionary' && <DictionaryBrowser entries={content.data.dictionary} />}
-          </AsyncState>
+          <AudioSourceProvider courseId={courseId}>
+            <AsyncState loading={content.loading} error={content.error} onRetry={content.retry}>
+              {content.data && tab === 'lessons' && (
+                <Sections
+                  sections={content.data.lessons}
+                  categories={content.data.categories}
+                  courseId={courseId}
+                  dictionary={dictionary}
+                  emptyText="Уроков нет."
+                />
+              )}
+              {content.data && tab === 'reference' && (
+                <Sections
+                  sections={content.data.reference}
+                  categories={content.data.categories}
+                  courseId={courseId}
+                  dictionary={dictionary}
+                  emptyText="Справочник пуст."
+                />
+              )}
+              {content.data && tab === 'dictionary' && <DictionaryBrowser entries={content.data.dictionary} />}
+            </AsyncState>
+          </AudioSourceProvider>
         </div>
       )}
     </AsyncState>

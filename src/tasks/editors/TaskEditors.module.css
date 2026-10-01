@@ -16,7 +16,8 @@
   gap: 0.4rem;
 }
 
-.row input[type='radio'] {
+.row input[type='radio'],
+.row input[type='checkbox'] {
   width: auto;
 }
 

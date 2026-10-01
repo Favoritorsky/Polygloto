@@ -184,9 +184,10 @@ service cloud.firestore {
     match /rateLimits/{uid} {
       allow read: if isSelf(uid);
       allow create, update: if isSelf(uid)
-        && request.resource.data.keys().hasOnly(['createCourse', 'addComment'])
+        && request.resource.data.keys().hasOnly(['createCourse', 'addComment', 'uploadAudio'])
         && limitField('createCourse', 30)
-        && limitField('addComment', 15);
+        && limitField('addComment', 15)
+        && limitField('uploadAudio', 5);
       allow delete: if false;
     }
 
@@ -371,6 +372,24 @@ service cloud.firestore {
         allow delete: if canDeleteContent();
       }
 
+      // Аудио (v2): Storage на Spark нет, файл хранится data URL в документе
+      // (shared/audio.js). Только создание и удаление, не чаще раза в 5 с.
+      function validAudio(d) {
+        return d.keys().hasOnly(['dataUrl', 'name', 'createdAt'])
+          && d.dataUrl is string && d.dataUrl.size() <= 480000
+          && d.dataUrl.matches('^data:audio/(mpeg|ogg|webm|mp4|wav);base64,[A-Za-z0-9+/]+=*$')
+          && isStringOfLength(d.name, 0, 120)
+          && d.createdAt == request.time;
+      }
+
+      match /audio/{audioId} {
+        allow read: if canManageCourse(get(coursePath(courseId)).data);
+        allow create: if canWriteContent() && validAudio(request.resource.data)
+          && rateLimitAfter('uploadAudio');
+        allow update: if false;
+        allow delete: if canDeleteContent();
+      }
+
       // ---------- Публичная активность: комментарии, реакции, оценки ----------
       // Создаются только для опубликованного курса (есть publicCourses/{id}).
 
@@ -500,8 +519,8 @@ service cloud.firestore {
       allow delete: if signedIn() && (resource.data.authorId == request.auth.uid || isAdmin());
 
       match /{section}/{docId} {
-        allow read: if section in ['lessons', 'reference', 'dictionary'];
-        allow create, update: if isAdmin() && section in ['lessons', 'reference', 'dictionary'];
+        allow read: if section in ['lessons', 'reference', 'dictionary', 'audio'];
+        allow create, update: if isAdmin() && section in ['lessons', 'reference', 'dictionary', 'audio'];
         allow delete: if signedIn() && (isAdmin()
           || (exists(publicPath(courseId)) && get(publicPath(courseId)).data.authorId == request.auth.uid)
           || (exists(coursePath(courseId)) && get(coursePath(courseId)).data.authorId == request.auth.uid));

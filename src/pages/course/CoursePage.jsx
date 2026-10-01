@@ -1,3 +1,4 @@
+import AudioSourceProvider from '../../audio/AudioSourceProvider.jsx';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import RatingButtons from '../../components/course/RatingButtons.jsx';
@@ -30,10 +31,12 @@ export default function CoursePage() {
   const [params, setParams] = useSearchParams();
   const tab = TAB_IDS.includes(params.get('tab')) ? params.get('tab') : 'lessons';
 
-  const { data: course, loading, error, retry } = useSubscription(
-    (onData, onError) => subscribeToPublicCourse(courseId, onData, onError),
-    courseId,
-  );
+  const {
+    data: course,
+    loading,
+    error,
+    retry,
+  } = useSubscription((onData, onError) => subscribeToPublicCourse(courseId, onData, onError), courseId);
   const dictionarySub = useSubscription(
     (onData, onError) => subscribeToDictionary(courseId, { published: true }, onData, onError),
     course ? courseId : null,
@@ -100,44 +103,46 @@ export default function CoursePage() {
       ) : (
         value && (
           <CoursePageContext.Provider value={value}>
-            <article className={styles.page}>
-              <header className={styles.header}>
-                <div className={styles.info}>
-                  <p className={styles.language}>{course.language}</p>
-                  <h1 className={styles.title}>{course.title}</h1>
-                  <p className={styles.author}>
-                    Автор: <Link to={`/users/${course.authorId}`}>{course.authorName || 'Без имени'}</Link>
-                  </p>
-                  {course.description && <p className={styles.description}>{course.description}</p>}
-                  <ul className={styles.stats}>
-                    <li>Уроков: {course.lessonsCount ?? 0}</li>
-                    <li>Слов в словаре: {course.wordsCount ?? 0}</li>
-                  </ul>
-                </div>
-                <RatingButtons course={course} />
-              </header>
+            <AudioSourceProvider courseId={courseId} published>
+              <article className={styles.page}>
+                <header className={styles.header}>
+                  <div className={styles.info}>
+                    <p className={styles.language}>{course.language}</p>
+                    <h1 className={styles.title}>{course.title}</h1>
+                    <p className={styles.author}>
+                      Автор: <Link to={`/users/${course.authorId}`}>{course.authorName || 'Без имени'}</Link>
+                    </p>
+                    {course.description && <p className={styles.description}>{course.description}</p>}
+                    <ul className={styles.stats}>
+                      <li>Уроков: {course.lessonsCount ?? 0}</li>
+                      <li>Слов в словаре: {course.wordsCount ?? 0}</li>
+                    </ul>
+                  </div>
+                  <RatingButtons course={course} />
+                </header>
 
-              <Tabs tabs={TABS} active={tab} onChange={changeTab} label="Разделы курса" />
-              <div className={styles.body}>
-                {tab === 'lessons' && <SectionReader key="lessons" kind="lessons" />}
-                {tab === 'reference' && <SectionReader key="reference" kind="reference" />}
-                {tab === 'dictionary' && (
-                  <AsyncState
-                    loading={dictionarySub.loading}
-                    error={dictionarySub.error}
-                    onRetry={dictionarySub.retry}
-                    empty={entries?.length === 0}
-                    emptyText="Словарь курса пока пуст."
-                  >
-                    <DictionaryBrowser
-                      entries={entries ?? []}
-                      renderActions={review ? (entry) => <ReviewButton entry={entry} review={review} /> : undefined}
-                    />
-                  </AsyncState>
-                )}
-                {tab === 'comments' && <CommentsSection />}
-              </div>
-            </article>
+                <Tabs tabs={TABS} active={tab} onChange={changeTab} label="Разделы курса" />
+                <div className={styles.body}>
+                  {tab === 'lessons' && <SectionReader key="lessons" kind="lessons" />}
+                  {tab === 'reference' && <SectionReader key="reference" kind="reference" />}
+                  {tab === 'dictionary' && (
+                    <AsyncState
+                      loading={dictionarySub.loading}
+                      error={dictionarySub.error}
+                      onRetry={dictionarySub.retry}
+                      empty={entries?.length === 0}
+                      emptyText="Словарь курса пока пуст."
+                    >
+                      <DictionaryBrowser
+                        entries={entries ?? []}
+                        renderActions={review ? (entry) => <ReviewButton entry={entry} review={review} /> : undefined}
+                      />
+                    </AsyncState>
+                  )}
+                  {tab === 'comments' && <CommentsSection />}
+                </div>
+              </article>
+            </AudioSourceProvider>
           </CoursePageContext.Provider>
         )
       )}

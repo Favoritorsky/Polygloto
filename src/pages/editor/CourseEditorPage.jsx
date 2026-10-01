@@ -6,6 +6,7 @@ import Alert from '../../components/ui/Alert.jsx';
 import AsyncState from '../../components/ui/AsyncState.jsx';
 import Button from '../../components/ui/Button.jsx';
 import Tabs from '../../components/ui/Tabs.jsx';
+import AudioSourceProvider from '../../audio/AudioSourceProvider.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
 import { useSubscription } from '../../hooks/useSubscription.js';
 import { buildDictionaryIndex } from '../../content/dictionaryIndex.js';
@@ -28,14 +29,16 @@ const TABS = [
 
 export default function CourseEditorPage() {
   const { courseId } = useParams();
-  const { isBanned } = useAuth();
+  const { isBanned, user } = useAuth();
   const [tab, setTab] = useState('lessons');
   const [withdrawing, setWithdrawing] = useState(false);
   const [actionError, setActionError] = useState('');
-  const { data: course, loading, error, retry } = useSubscription(
-    (onData, onError) => subscribeToCourse(courseId, onData, onError),
-    courseId,
-  );
+  const {
+    data: course,
+    loading,
+    error,
+    retry,
+  } = useSubscription((onData, onError) => subscribeToCourse(courseId, onData, onError), courseId);
 
   // Словарь нужен сразу нескольким вкладкам (вкладка словаря, ссылки в уроках, предпросмотр).
   const dictionarySub = useSubscription(
@@ -66,7 +69,9 @@ export default function CourseEditorPage() {
     const status = statusRef.current;
     if (status === COURSE_STATUS.DRAFT) return;
     if (status === COURSE_STATUS.PENDING_REVIEW) {
-      throw Object.assign(new Error('Курс на проверке'), { userMessage: 'Курс на проверке: отзовите его, чтобы править.' });
+      throw Object.assign(new Error('Курс на проверке'), {
+        userMessage: 'Курс на проверке: отзовите его, чтобы править.',
+      });
     }
     // Одна смена статуса на несколько одновременных сохранений.
     if (!draftPromise.current) {
@@ -96,7 +101,18 @@ export default function CourseEditorPage() {
 
   const readOnly = isBanned || course?.status === COURSE_STATUS.PENDING_REVIEW;
   const contextValue = useMemo(
-    () => (course ? { course, courseId, readOnly, ensureDraft, dictionary, registerAutosave, flushAll } : null),
+    () =>
+      course
+        ? {
+            course,
+            courseId,
+            readOnly,
+            ensureDraft,
+            dictionary,
+            registerAutosave,
+            flushAll,
+          }
+        : null,
     [course, courseId, readOnly, ensureDraft, dictionary, registerAutosave, flushAll],
   );
 
@@ -124,41 +140,42 @@ export default function CourseEditorPage() {
       ) : (
         course && (
           <CourseEditorContext.Provider value={contextValue}>
-            <div className={styles.header}>
-              <div>
-                <Link to="/my-courses" className={styles.back}>
-                  ← Мои курсы
-                </Link>
-                <h1 className={styles.title}>{course.title}</h1>
-                <div className={styles.meta}>
-                  <StatusBadge status={course.status} />
-                  <span>{course.language}</span>
+            <AudioSourceProvider courseId={courseId} uid={user?.uid}>
+              <div className={styles.header}>
+                <div>
+                  <Link to="/my-courses" className={styles.back}>
+                    ← Мои курсы
+                  </Link>
+                  <h1 className={styles.title}>{course.title}</h1>
+                  <div className={styles.meta}>
+                    <StatusBadge status={course.status} />
+                    <span>{course.language}</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <StatusPanel />
-            {course.status === COURSE_STATUS.PENDING_REVIEW && (
-              <Alert
-                tone="warning"
-                title="Курс на проверке"
-                action={
-                  <Button size="sm" variant="secondary" onClick={handleWithdraw} loading={withdrawing}>
-                    Отозвать и редактировать
-                  </Button>
-                }
-              >
-                Пока идёт модерация, правки недоступны — так администратор проверяет именно ту версию, которую вы
-                отправили.
-              </Alert>
-            )}
-            {actionError && <Alert tone="error">{actionError}</Alert>}
+              <StatusPanel />
+              {course.status === COURSE_STATUS.PENDING_REVIEW && (
+                <Alert
+                  tone="warning"
+                  title="Курс на проверке"
+                  action={
+                    <Button size="sm" variant="secondary" onClick={handleWithdraw} loading={withdrawing}>
+                      Отозвать и редактировать
+                    </Button>
+                  }
+                >
+                  Пока идёт модерация, правки недоступны — так администратор проверяет именно ту версию, которую вы отправили.
+                </Alert>
+              )}
+              {actionError && <Alert tone="error">{actionError}</Alert>}
 
-            <Tabs tabs={TABS} active={tab} onChange={setTab} label="Разделы курса" />
-            {tab === 'lessons' && <SectionsTab kind="lessons" key="lessons" />}
-            {tab === 'reference' && <SectionsTab kind="reference" key="reference" />}
-            {tab === 'dictionary' && <DictionaryTab />}
-            {tab === 'settings' && <SettingsTab />}
+              <Tabs tabs={TABS} active={tab} onChange={setTab} label="Разделы курса" />
+              {tab === 'lessons' && <SectionsTab kind="lessons" key="lessons" />}
+              {tab === 'reference' && <SectionsTab kind="reference" key="reference" />}
+              {tab === 'dictionary' && <DictionaryTab />}
+              {tab === 'settings' && <SettingsTab />}
+            </AudioSourceProvider>
           </CourseEditorContext.Provider>
         )
       )}

@@ -178,6 +178,21 @@ request.time`, обновлять нельзя). Кнопка «Урок про�
 | `notes` | string ≤1000 | Заметки |
 | `createdAt`, `updatedAt` | timestamp | |
 
+### `courses/{courseId}/audio/{audioId}` — аудиофайлы курса (v2)
+
+Firebase Storage на тарифе Spark недоступен (новые бакеты — только на Blaze),
+поэтому загруженная запись хранится прямо в документе как data URL. Читают
+автор и админ; создаёт автор черновика не чаще раза в 5 с (`rateLimits.uploadAudio`);
+менять нельзя, удалить может автор. Контент ссылается на файл через AudioRef
+(см. «Аудио» ниже). При одобрении в `publicCourses/{id}/audio` копируются
+только файлы, на которые ссылается опубликованный контент.
+
+| Поле | Тип | Описание |
+|---|---|---|
+| `dataUrl` | string ≤480 000 | `data:audio/(mpeg\|ogg\|webm\|mp4\|wav);base64,…` (исходный файл до 350 КБ) |
+| `name` | string ≤120 | Имя исходного файла |
+| `createdAt` | timestamp | |
+
 ### `courses/{courseId}/comments/{commentId}`
 
 Создаёт пользователь одним пакетом вместе с отметкой в `rateLimits`
@@ -247,6 +262,7 @@ ID документа детерминирован — это и есть «од
 Число комментариев не хранится: страница курса считает его запросом `count()`.
 
 Подколлекции `lessons`, `reference`, `dictionary` — копии рабочих, те же поля.
+`audio` — копии используемых аудиофайлов, только поле `dataUrl`; читают все.
 
 ### Запросы каталога
 
@@ -283,10 +299,11 @@ ID документа детерминирован — это и есть «од
 
 Отметки времени для ограничения частоты. Читает и пишет только владелец,
 удалять нельзя. Поле можно установить только в `request.time` и только если
-прежнее значение старше лимита (`createCourse` — 30 с, `addComment` — 15 с).
+прежнее значение старше лимита (`createCourse` — 30 с, `addComment` — 15 с,
+`uploadAudio` — 5 с).
 Правила создания курса и комментария требуют, чтобы отметка менялась в той же
 записи, поэтому обойти лимит, не трогая `rateLimits`, нельзя.
-`{ createCourse: timestamp, addComment: timestamp }`
+`{ createCourse: timestamp, addComment: timestamp, uploadAudio: timestamp }`
 
 ---
 
@@ -372,10 +389,25 @@ Firestore не поддерживает вложенные массивы, по�
 | `matching` | `{ instruction: string, pairs: [{ id, left, right }] }` |
 | `translation` | `{ source: string, answers: string[] }` — первый ответ основной, остальные — допустимые варианты |
 | `free_input` | `{ question: string, answers: string[] }` |
+| `multiple_select` (v2) | `{ question: string, options: [{ id, text }], correctOptionIds: string[] }` — верно, только если выбраны ровно все правильные |
+| `sentence_order` (v2) | `{ instruction: string, translation: string, answers: string[] }` — первый ответ делится по пробелам на слова для перемешивания, остальные — допустимые порядки тех же слов; регистр и знаки препинания при сверке не важны |
+| `listening` (v2) | `{ audio: AudioRef \| null, question: string, mode: 'choice' \| 'input', options, correctOptionId, answers: string[], transcript: string }` — расшифровка показывается после ответа |
 
 Проверка ответов нечувствительна к регистру и лишним пробелам (`normalizeText`).
 Ответы проверяются на клиенте: задания — учебные, результат нигде не
 засчитывается, поэтому доверять клиенту здесь безопасно.
+
+### Аудио (AudioRef, v2)
+
+Ссылка на запись в контенте (`shared/audio.js`, `sanitizeAudioRef`):
+
+- `{ kind: 'file', id }` — файл из `courses/{id}/audio/{id}` (у читателя — из `publicCourses/{id}/audio`);
+- `{ kind: 'url', url }` — внешняя ссылка: только `https://`, только хосты из
+  `AUDIO_HOSTS` (сейчас `upload.wikimedia.org`), без логина и порта, путь
+  оканчивается на `.mp3/.ogg/.oga/.opus/.webm/.m4a/.wav`. Тот же хост разрешён
+  в CSP (`media-src` в `firebase.json`).
+
+Файл загружается только по нажатию «Слушать», не вместе с уроком.
 
 ## Файлы
 
