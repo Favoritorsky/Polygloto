@@ -18,10 +18,12 @@
   border-radius: var(--radius-sm);
   background: var(--color-surface);
   cursor: pointer;
+  min-width: 0;
 }
 
 .option input {
   width: auto;
+  flex-shrink: 0;
 }
 
 .optionCorrect {
@@ -42,16 +44,39 @@
   font-size: 1.05rem;
 }
 
+.sentence > span {
+  min-width: 0;
+}
+
 .blank {
   width: 10rem;
+  max-width: 100%;
   display: inline-block;
 }
 
 .pairs {
   display: grid;
-  grid-template-columns: minmax(8rem, 1fr) minmax(10rem, 1.3fr) auto;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.3fr) auto;
   gap: 0.4rem 0.75rem;
   align-items: center;
+}
+
+.pairs select {
+  min-width: 0;
+  max-width: 100%;
+}
+
+/* На узком экране левая часть пары — над списком выбора. */
+@media (max-width: 560px) {
+  .pairs {
+    grid-template-columns: minmax(0, 1fr) auto;
+    row-gap: 0.2rem;
+  }
+
+  .pairLeft {
+    grid-column: 1 / -1;
+    margin-top: 0.4rem;
+  }
 }
 
 .mark {
@@ -121,6 +146,9 @@
   padding: 0.3rem 0.7rem;
   font: inherit;
   cursor: pointer;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  text-align: left;
 }
 
 .chip:hover:not(:disabled) {

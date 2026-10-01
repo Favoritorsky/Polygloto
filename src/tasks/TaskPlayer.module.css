@@ -1,4 +1,7 @@
 .card {
+  /* Длинные слова и варианты переносятся, а не выходят за карточку. */
+  min-width: 0;
+  overflow-wrap: anywhere;
   margin: 1.25rem 0;
   padding: 1rem 1.25rem;
   background: var(--color-surface-subtle);

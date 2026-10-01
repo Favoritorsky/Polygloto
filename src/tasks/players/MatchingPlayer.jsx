@@ -24,7 +24,7 @@ export default function MatchingPlayer({ data, answer, setAnswer, result, disabl
           const ok = result?.results?.[pair.id];
           return (
             <Fragment key={pair.id}>
-              <span>{pair.left}</span>
+              <span className={styles.pairLeft}>{pair.left}</span>
               <select
                 value={current[pair.id] ?? ''}
                 onChange={(e) => setAnswer({ ...current, [pair.id]: e.target.value })}
