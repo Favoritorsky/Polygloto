@@ -63,3 +63,9 @@
   text-align: center;
   padding: 3rem 1rem;
 }
+
+.games {
+  display: inline-block;
+  margin-top: 0.5rem;
+  font-weight: 600;
+}

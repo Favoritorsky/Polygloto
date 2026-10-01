@@ -117,6 +117,11 @@ export default function CoursePage() {
                       <li>Уроков: {course.lessonsCount ?? 0}</li>
                       <li>Слов в словаре: {course.wordsCount ?? 0}</li>
                     </ul>
+                    {(course.wordsCount ?? 0) >= 4 && (
+                      <Link to={`/course/${courseId}/games`} className={styles.games}>
+                        🎮 Мини-игры по словарю
+                      </Link>
+                    )}
                   </div>
                   <RatingButtons course={course} />
                 </header>

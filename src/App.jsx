@@ -16,6 +16,7 @@ import DemoCoursePage from './pages/demo/DemoCoursePage.jsx';
 import ReviewPage from './pages/review/ReviewPage.jsx';
 import ProgressPage from './pages/progress/ProgressPage.jsx';
 import LeaderboardPage from './pages/leaderboard/LeaderboardPage.jsx';
+import GamesPage from './pages/games/GamesPage.jsx';
 import ProfilePage from './pages/profile/ProfilePage.jsx';
 import CoursePage from './pages/course/CoursePage.jsx';
 import CourseEditorPage from './pages/editor/CourseEditorPage.jsx';
@@ -92,6 +93,7 @@ export default function App() {
           <Route path="catalog" element={<CatalogPage />} />
           <Route path="demo" element={<DemoCoursePage />} />
           <Route path="course/:courseId" element={<CoursePage />} />
+          <Route path="course/:courseId/games" element={<GamesPage />} />
           <Route path="users/:uid" element={<ProfilePage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
