@@ -190,6 +190,7 @@ request.time`, обновлять нельзя). Кнопка «Урок про�
 | `partOfSpeech` | одно из `PART_OF_SPEECH_IDS` | Часть речи |
 | `examples` | array ≤10 of string ≤300 | Примеры употребления |
 | `notes` | string ≤1000 | Заметки |
+| `audio` | AudioRef \| null, необязательно (v2) | Произношение; правила проверяют вид ссылки, id файла и хост |
 | `createdAt`, `updatedAt` | timestamp | |
 
 ### `courses/{courseId}/audio/{audioId}` — аудиофайлы курса (v2)
@@ -376,8 +377,10 @@ Firestore не поддерживает вложенные массивы, по�
 // Задание (см. реестр src/tasks/taskTypeRegistry.js)
 { "type": "task", "taskType": "multiple_choice", "data": { ... } }
 
-// Зарезервировано для v2 (рендерятся заглушкой):
-{ "type": "audio", ... }
+// Аудиовставка (v2). audio — AudioRef или null (пока автор не выбрал запись; читатель такой блок не видит)
+{ "type": "audio", "audio": { "kind": "file", "id": "Ab12" }, "caption": "Диалог в кафе" }
+
+// Зарезервировано для v2 (рендерится заглушкой):
 { "type": "gloss", ... }
 ```
 

@@ -373,10 +373,21 @@ service cloud.firestore {
         allow delete: if canDeleteContent();
       }
 
+      // Ссылка на аудио (shared/audio.js): файл курса или https-ссылка на Викисклад.
+      function validAudioRef(a) {
+        return a == null
+          || (a is map && a.get('kind', '') == 'file' && a.keys().hasOnly(['kind', 'id'])
+            && a.id is string && a.id.matches('^[A-Za-z0-9_-]{1,40}$'))
+          || (a is map && a.get('kind', '') == 'url' && a.keys().hasOnly(['kind', 'url'])
+            && a.url is string && a.url.size() <= 500
+            && a.url.matches('^https://upload[.]wikimedia[.]org/[^?#]*[.](?i:mp3|ogg|oga|opus|webm|m4a|wav)([?#].*)?$'));
+      }
+
       // Словарь курса. partOfSpeech — из PART_OF_SPEECH_IDS (shared/schema.js).
       function validWord(d) {
         return d.keys().hasOnly(['word', 'wordLower', 'translation', 'partOfSpeech',
-                                 'examples', 'notes', 'createdAt', 'updatedAt'])
+                                 'examples', 'notes', 'audio', 'createdAt', 'updatedAt'])
+          && validAudioRef(d.get('audio', null))
           && isStringOfLength(d.word, 1, 100)
           && isStringOfLength(d.wordLower, 1, 100)
           && isStringOfLength(d.translation, 1, 300)

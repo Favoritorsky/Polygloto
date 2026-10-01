@@ -17,14 +17,27 @@ beforeEach(async () => {
   await seed(env, 'courses/c1', course());
   await seed(env, 'courses/pending', course({ status: 'pending_review' }));
   await seed(env, 'courses/c1/dictionary/w1', {
-    word: 'ihura', wordLower: 'ihura', translation: 'язык', partOfSpeech: 'noun',
-    examples: [], notes: '', createdAt: new Date(), updatedAt: new Date(),
+    word: 'ihura',
+    wordLower: 'ihura',
+    translation: 'язык',
+    partOfSpeech: 'noun',
+    examples: [],
+    notes: '',
+    createdAt: new Date(),
+    updatedAt: new Date(),
   });
 });
 
 const word = (extra = {}) => ({
-  word: 'pona', wordLower: 'pona', translation: 'хороший', partOfSpeech: 'adjective',
-  examples: ['toki pona'], notes: '', createdAt: serverTimestamp(), updatedAt: serverTimestamp(), ...extra,
+  word: 'pona',
+  wordLower: 'pona',
+  translation: 'хороший',
+  partOfSpeech: 'adjective',
+  examples: ['toki pona'],
+  notes: '',
+  createdAt: serverTimestamp(),
+  updatedAt: serverTimestamp(),
+  ...extra,
 });
 
 describe('dictionary (рабочая версия)', () => {
@@ -51,10 +64,29 @@ describe('dictionary (рабочая версия)', () => {
   });
 
   it('createdAt нельзя подменить при правке', async () => {
-    await assertFails(updateDoc(doc(as(env, 'alice'), 'courses/c1/dictionary/w1'), { createdAt: new Date(0), updatedAt: serverTimestamp() }));
+    await assertFails(
+      updateDoc(doc(as(env, 'alice'), 'courses/c1/dictionary/w1'), { createdAt: new Date(0), updatedAt: serverTimestamp() }),
+    );
   });
 
   it('в курсе на модерации словарь заморожен', async () => {
     await assertFails(setDoc(doc(as(env, 'alice'), 'courses/pending/dictionary/w2'), word()));
+  });
+
+  it('произношение (v2): файл курса или ссылка на Викисклад', async () => {
+    let n = 0;
+    const ref = () => doc(as(env, 'alice'), `courses/c1/dictionary/a${(n += 1)}`);
+    await assertSucceeds(setDoc(ref(), word({ audio: null })));
+    await assertSucceeds(setDoc(ref(), word({ audio: { kind: 'file', id: 'a1' } })));
+    await assertSucceeds(
+      setDoc(ref(), word({ audio: { kind: 'url', url: 'https://upload.wikimedia.org/wikipedia/commons/a/ab/Es-hola.OGG' } })),
+    );
+    await assertFails(setDoc(ref(), word({ audio: { kind: 'url', url: 'https://evil.example/a.mp3' } })));
+    await assertFails(setDoc(ref(), word({ audio: { kind: 'url', url: 'http://upload.wikimedia.org/a.mp3' } })));
+    await assertFails(setDoc(ref(), word({ audio: { kind: 'url', url: 'https://upload.wikimedia.org/a.html' } })));
+    await assertFails(setDoc(ref(), word({ audio: { kind: 'url', url: 'https://upload.wikimedia.org.evil.com/a.mp3' } })));
+    await assertFails(setDoc(ref(), word({ audio: { kind: 'file', id: '../x' } })));
+    await assertFails(setDoc(ref(), word({ audio: { kind: 'file', id: 'a1', src: 'x' } })));
+    await assertFails(setDoc(ref(), word({ audio: 'https://upload.wikimedia.org/a.mp3' })));
   });
 });

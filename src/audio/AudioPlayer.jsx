@@ -7,7 +7,7 @@ import styles from './AudioPlayer.module.css';
  * Плеер для ссылки на аудио ({ kind: 'file', id } | { kind: 'url', url }).
  * Файл не грузится, пока его не включат: data URL может весить сотни килобайт.
  */
-export default function AudioPlayer({ audio, label = 'Слушать', compact = false }) {
+export default function AudioPlayer({ audio, label = 'Слушать', text = label, compact = false }) {
   const { load } = useAudioSource();
   const [state, setState] = useState({
     status: 'idle',
@@ -59,7 +59,7 @@ export default function AudioPlayer({ audio, label = 'Слушать', compact =
         aria-label={label}
       >
         <span aria-hidden="true">{state.status === 'loading' ? '…' : '▶'}</span>
-        {!compact && <span>{state.status === 'loading' ? 'Загрузка…' : label}</span>}
+        {!compact && <span>{state.status === 'loading' ? 'Загрузка…' : text}</span>}
       </button>
       {state.error && (
         <span className={styles.error} role="alert">

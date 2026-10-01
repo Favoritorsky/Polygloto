@@ -8,6 +8,7 @@
  * Контент никогда не содержит HTML: только текст и атрибуты оформления.
  */
 import { LIMITS, PALETTE } from './schema.js';
+import { sanitizeAudioRef } from './audio.js';
 import { sanitizeTaskData, TASK_TYPE_IDS } from './tasks.js';
 
 export const BLOCK_TYPES = Object.freeze({
@@ -29,6 +30,7 @@ export const CONTENT_LIMITS = Object.freeze({
   TABLE_ROWS_MAX: 50,
   TABLE_COLS_MAX: 10,
   TABLE_CELL_MAX: 500,
+  AUDIO_CAPTION_MAX: 300,
 });
 
 export const MARKS = Object.freeze(['bold', 'italic', 'underline']);
@@ -116,6 +118,14 @@ export function sanitizeBlock(block, options = {}) {
       const id = typeof block.id === 'string' && ID_RE.test(block.id) ? block.id : null;
       return { type: BLOCK_TYPES.TASK, id, taskType: block.taskType, data: sanitizeTaskData(block.taskType, block.data) };
     }
+    case BLOCK_TYPES.AUDIO:
+      // Аудиовставка (v2). Пока автор не выбрал запись, audio — null: блок
+      // сохраняется, но читателю не показывается.
+      return {
+        type: BLOCK_TYPES.AUDIO,
+        audio: sanitizeAudioRef(block.audio),
+        caption: cleanString(block.caption, CONTENT_LIMITS.AUDIO_CAPTION_MAX),
+      };
     default:
       return null;
   }
@@ -157,6 +167,9 @@ export function sanitizeWord(word, partOfSpeechIds) {
       .slice(0, LIMITS.WORD_EXAMPLES_MAX),
     notes: cleanString(word.notes, LIMITS.WORD_NOTES_MAX).trim(),
   };
+  // Произношение (v2): ссылка на аудио, поле есть только у слов с записью.
+  const audio = sanitizeAudioRef(word.audio);
+  if (audio) clean.audio = audio;
   if (!clean.word || !clean.translation) return null;
   return clean;
 }

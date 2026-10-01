@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { LIMITS, PARTS_OF_SPEECH } from '../../../shared/schema.js';
+import AudioRefEditor from '../../audio/AudioRefEditor.jsx';
 import Alert from '../ui/Alert.jsx';
 import Button from '../ui/Button.jsx';
 import Field from '../ui/Field.jsx';
@@ -7,7 +8,7 @@ import { validateWord } from '../../services/dictionaryService.js';
 import { toUserMessage } from '../../services/errors.js';
 import styles from './WordForm.module.css';
 
-const EMPTY = { word: '', translation: '', partOfSpeech: 'noun', examples: [''], notes: '' };
+const EMPTY = { word: '', translation: '', partOfSpeech: 'noun', examples: [''], notes: '', audio: null };
 
 /** Форма статьи словаря (добавление и правка). onSubmit(value) → Promise. */
 export default function WordForm({ initial, onSubmit, onCancel, submitLabel = 'Добавить' }) {
@@ -97,6 +98,7 @@ export default function WordForm({ initial, onSubmit, onCancel, submitLabel = '�
           </Button>
         )}
       </fieldset>
+      <AudioRefEditor value={form.audio} onChange={(audio) => setForm((f) => ({ ...f, audio }))} label="Произношение (необязательно)" />
       <Field label="Заметки" error={errors.notes}>
         {(p) => <textarea {...p} rows={2} value={form.notes} maxLength={LIMITS.WORD_NOTES_MAX} onChange={update('notes')} />}
       </Field>

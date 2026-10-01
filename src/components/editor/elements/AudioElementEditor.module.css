@@ -1,0 +1,17 @@
+.label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.label input {
+  font-weight: 400;
+}
+
+.hint {
+  font-size: 0.8rem;
+  color: var(--color-warning, var(--color-text-muted));
+  margin: 0.5rem 0 0;
+}

@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { sanitizeBlocks, sanitizeCategories, sanitizeLeaf, tableCellRole } from './content.js';
+import { sanitizeBlocks, sanitizeCategories, sanitizeLeaf, sanitizeWord, tableCellRole } from './content.js';
 
 describe('sanitizeLeaf', () => {
   it('оставляет только известные атрибуты', () => {
-    expect(
-      sanitizeLeaf({ text: 'Привет', bold: true, italic: 'yes', color: '#e63946', onclick: 'x', html: '<b>' }),
-    ).toEqual({ text: 'Привет', bold: true, color: '#e63946' });
+    expect(sanitizeLeaf({ text: 'Привет', bold: true, italic: 'yes', color: '#e63946', onclick: 'x', html: '<b>' })).toEqual({
+      text: 'Привет',
+      bold: true,
+      color: '#e63946',
+    });
   });
 
   it('отбрасывает цвет не из палитры (в т.ч. CSS-инъекции)', () => {
@@ -24,14 +26,31 @@ describe('sanitizeLeaf', () => {
 });
 
 describe('sanitizeBlocks', () => {
-  it('отбрасывает неизвестные блоки и зарезервированные v2', () => {
-    const result = sanitizeBlocks([
-      { type: 'paragraph', children: [{ text: 'a' }] },
-      { type: 'script', children: [] },
-      { type: 'audio', src: 'x' },
-      null,
-    ]);
+  it('отбрасывает неизвестные блоки', () => {
+    const result = sanitizeBlocks([{ type: 'paragraph', children: [{ text: 'a' }] }, { type: 'script', children: [] }, null]);
     expect(result).toEqual([{ type: 'paragraph', children: [{ text: 'a' }] }]);
+  });
+
+  it('аудиоблок (v2): только допустимая ссылка и подпись', () => {
+    const [ok, bad, empty] = sanitizeBlocks([
+      { type: 'audio', audio: { kind: 'file', id: 'a1' }, caption: 'Диалог', src: 'x' },
+      { type: 'audio', audio: { kind: 'url', url: 'https://evil.example/a.mp3' }, caption: 'x'.repeat(400) },
+      { type: 'audio' },
+    ]);
+    expect(ok).toEqual({ type: 'audio', audio: { kind: 'file', id: 'a1' }, caption: 'Диалог' });
+    expect(bad.audio).toBeNull();
+    expect(bad.caption).toHaveLength(300);
+    expect(empty).toEqual({ type: 'audio', audio: null, caption: '' });
+  });
+
+  it('произношение слова: только допустимая ссылка', () => {
+    expect(sanitizeWord({ word: 'hola', translation: 'привет', audio: { kind: 'file', id: 'a1' } }, ['other']).audio).toEqual({
+      kind: 'file',
+      id: 'a1',
+    });
+    expect('audio' in sanitizeWord({ word: 'hola', translation: 'привет', audio: { kind: 'url', url: 'http://x' } }, ['other'])).toBe(
+      false,
+    );
   });
 
   it('пустой абзац получает пустой лист', () => {
@@ -83,12 +102,23 @@ describe('таблицы: заголовки по строке и по стол�
   });
 
   it('роли ячеек во всех сочетаниях флагов', () => {
-    const roles = (headerRow, headerColumn) =>
-      [0, 1].map((r) => [0, 1].map((c) => tableCellRole({ headerRow, headerColumn }, r, c)));
-    expect(roles(true, true)).toEqual([['corner', 'column'], ['row', 'cell']]);
-    expect(roles(true, false)).toEqual([['column', 'column'], ['cell', 'cell']]);
-    expect(roles(false, true)).toEqual([['row', 'cell'], ['row', 'cell']]);
-    expect(roles(false, false)).toEqual([['cell', 'cell'], ['cell', 'cell']]);
+    const roles = (headerRow, headerColumn) => [0, 1].map((r) => [0, 1].map((c) => tableCellRole({ headerRow, headerColumn }, r, c)));
+    expect(roles(true, true)).toEqual([
+      ['corner', 'column'],
+      ['row', 'cell'],
+    ]);
+    expect(roles(true, false)).toEqual([
+      ['column', 'column'],
+      ['cell', 'cell'],
+    ]);
+    expect(roles(false, true)).toEqual([
+      ['row', 'cell'],
+      ['row', 'cell'],
+    ]);
+    expect(roles(false, false)).toEqual([
+      ['cell', 'cell'],
+      ['cell', 'cell'],
+    ]);
   });
 
   it('таблица 1×1 с обоими флагами — одна угловая ячейка; старые таблицы без флага — заголовок-строка', () => {

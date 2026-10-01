@@ -6,10 +6,12 @@
  * добавить запись в реестр и тип в shared/content.js.
  */
 import { BLOCK_TYPES } from '../../../shared/content.js';
+import AudioElementEditor from './elements/AudioElementEditor.jsx';
 import TableElementEditor from './elements/TableElementEditor.jsx';
 
 export const elementEditors = {
   [BLOCK_TYPES.TABLE]: TableElementEditor,
+  [BLOCK_TYPES.AUDIO]: AudioElementEditor,
 };
 
 export const insertables = [
@@ -24,6 +26,12 @@ export const insertables = [
       // Пустая 2×2: подсказки в ячейках — плейсхолдеры полей, в данные не попадают.
       rows: [{ cells: ['', ''] }, { cells: ['', ''] }],
     }),
+  },
+  {
+    id: 'audio',
+    label: 'Аудио',
+    group: 'Блоки',
+    create: () => ({ type: BLOCK_TYPES.AUDIO, audio: null, caption: '' }),
   },
 ];
 

@@ -1,3 +1,4 @@
+import AudioPlayer from '../../audio/AudioPlayer.jsx';
 import { useId, useState } from 'react';
 import { useContentContext } from '../content/contentContext.js';
 import ReviewButton from '../review/ReviewButton.jsx';
@@ -48,6 +49,12 @@ export default function DictWord({ entries, className, style, title, children })
             <span key={entry.id} className={styles.entry}>
               <span className={styles.head}>
                 <strong>{entry.word}</strong> <em>{POS_LABELS[entry.partOfSpeech]}</em>
+                {entry.audio && (
+                  // Клик по плееру не должен закреплять/снимать подсказку.
+                  <span onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} role="presentation">
+                    <AudioPlayer audio={entry.audio} label={`Произношение: ${entry.word}`} compact />
+                  </span>
+                )}
               </span>
               <span className={styles.translation}>{entry.translation}</span>
               {entry.examples?.[0] && <span className={styles.example}>{entry.examples[0]}</span>}

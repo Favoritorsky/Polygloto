@@ -3,6 +3,7 @@
  * без правок ContentRenderer. Задания подключаются из реестра заданий (этап 7).
  */
 import { BLOCK_TYPES } from '../../../shared/content.js';
+import AudioBlockView from './AudioBlockView.jsx';
 import TableView from './TableView.jsx';
 import { HeadingView, ParagraphView } from './TextBlock.jsx';
 import V2Placeholder from './V2Placeholder.jsx';
@@ -11,7 +12,7 @@ export const blockRenderers = {
   [BLOCK_TYPES.PARAGRAPH]: ParagraphView,
   [BLOCK_TYPES.HEADING]: HeadingView,
   [BLOCK_TYPES.TABLE]: TableView,
-  [BLOCK_TYPES.AUDIO]: V2Placeholder,
+  [BLOCK_TYPES.AUDIO]: AudioBlockView,
   [BLOCK_TYPES.GLOSS]: V2Placeholder,
 };
 

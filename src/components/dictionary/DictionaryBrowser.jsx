@@ -1,3 +1,4 @@
+import AudioPlayer from '../../audio/AudioPlayer.jsx';
 import { useMemo, useState } from 'react';
 import { PARTS_OF_SPEECH } from '../../../shared/schema.js';
 import { filterDictionary } from '../../content/dictionaryIndex.js';
@@ -60,6 +61,7 @@ export default function DictionaryBrowser({ entries, renderActions, highlightId 
                 <span className={styles.word}>{entry.word}</span>
                 <span className={styles.pos}>{POS_LABELS[entry.partOfSpeech] ?? entry.partOfSpeech}</span>
                 <span className={styles.translation}>{entry.translation}</span>
+                {entry.audio && <AudioPlayer audio={entry.audio} label={`Произношение: ${entry.word}`} compact />}
                 {renderActions && <span className={styles.actions}>{renderActions(entry)}</span>}
               </div>
               {entry.examples?.length > 0 && (

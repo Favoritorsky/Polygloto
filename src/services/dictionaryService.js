@@ -2,6 +2,7 @@
  * Словарь курса: courses/{id}/dictionary (рабочая версия, автор) и
  * publicCourses/{id}/dictionary (опубликованная, читатели).
  */
+import { sanitizeAudioRef } from '../../shared/audio.js';
 import {
   addDoc,
   collection,
@@ -42,8 +43,9 @@ export function validateWord({ word, translation, partOfSpeech, examples, notes 
   return errors;
 }
 
-function toDoc({ word, translation, partOfSpeech, examples, notes }) {
+function toDoc({ word, translation, partOfSpeech, examples, notes, audio }) {
   return {
+    audio: sanitizeAudioRef(audio),
     word: word.trim(),
     wordLower: normalizeText(word).slice(0, LIMITS.WORD_MAX),
     translation: translation.trim(),
