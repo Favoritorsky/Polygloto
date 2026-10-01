@@ -77,8 +77,9 @@ function listFiles(dir) {
 function hostingConfig(hosting) {
   return {
     rewrites: (hosting.rewrites ?? []).map((r) => ({ glob: r.source, path: r.destination })),
+    // Источник — glob (source) или регулярное выражение RE2 (regex), как в firebase.json.
     headers: (hosting.headers ?? []).map((h) => ({
-      glob: h.source,
+      ...(h.regex ? { regex: h.regex } : { glob: h.source }),
       headers: Object.fromEntries(h.headers.map(({ key, value }) => [key, value])),
     })),
   };

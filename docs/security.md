@@ -52,7 +52,7 @@ Security Rules (`firestore.rules`). Всё, что раньше делали ф�
 | Чужой или внешний URL аватара (трекинг, подмена) | `photoURL` — только `data:image/jpeg;base64,…` до 40 000 символов; внешние ссылки запрещены | rules: users; e2e 11 |
 | Вредоносный файл вместо аватара (SVG/HTML) | Принимается только JPEG в data URL; клиент перекодирует картинку в JPEG 160×160 | rules: users; e2e 11 |
 | Утечка email | Email не хранится в Firestore; публичный профиль содержит только имя, фото и «о себе» | data-model |
-| Кликджекинг, внедрение скриптов | Hosting отдаёт CSP (`script-src 'self'`, `object-src 'none'`, `frame-ancestors 'none'`), `X-Frame-Options: DENY`, `nosniff` | этап 13 |
+| Кликджекинг, внедрение скриптов | Hosting отдаёт CSP (`script-src 'self'`, `object-src 'none'`, `frame-ancestors 'none'`), `X-Frame-Options: DENY`, `nosniff`. CSP действует на всех страницах сайта, кроме служебных страниц Firebase `/__/…` (подтверждение почты, сброс пароля): они не наши и работают на встроенных скриптах Firebase. Встроенных скриптов в самом сайте нет, это проверяет `src/csp.test.js` | этап 13, правки 3 |
 
 ## История аудита
 
