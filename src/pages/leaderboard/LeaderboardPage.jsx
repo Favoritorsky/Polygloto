@@ -30,7 +30,7 @@ export default function LeaderboardPage() {
     <div className={styles.page}>
       <h1>Рейтинг</h1>
       <p className={styles.muted}>
-        Очки дают задания, пройденные уроки и повторение слов.{' '}
+        Очки начисляются за задания, пройденные уроки и повторение слов.{' '}
         {tab === 'week' ? `Неделя началась ${weekStart} (по UTC).` : 'Топ-20 за всё время.'}
       </p>
       <Tabs tabs={TABS} active={tab} onChange={setTab} label="Период рейтинга" />
