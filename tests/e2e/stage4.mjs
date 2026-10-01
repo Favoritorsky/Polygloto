@@ -28,6 +28,7 @@ try {
   assert(true, 'после перезагрузки название урока на месте');
 
   await page.getByRole('button', { name: '+ Урок' }).click();
+  await page.getByRole('group', { name: 'Новый урок' }).getByRole('button', { name: /Пустой урок/ }).click();
   await page.getByRole('button', { name: /2\. Новый урок/ }).waitFor();
   assert(true, 'добавлен второй урок');
 

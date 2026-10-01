@@ -387,8 +387,39 @@ service cloud.firestore {
       return /databases/$(database)/documents/publicCourses/$(courseId);
     }
 
-    function canManageCourse(data) {
+    // Автор (и админ): всё, включая удаление курса и список соавторов.
+    function isCourseAuthor(data) {
       return signedIn() && (data.authorId == request.auth.uid || isAdmin());
+    }
+
+    // Соавторы (v2): те же права на черновик, что у автора, кроме удаления и смены соавторов.
+    function isCoAuthor(data) {
+      return signedIn() && request.auth.uid in data.get('coAuthors', []);
+    }
+
+    function canManageCourse(data) {
+      return isCourseAuthor(data) || isCoAuthor(data);
+    }
+
+    function uidAt(list, i) {
+      return list.size() <= i || (list[i] is string && list[i].size() > 0 && list[i].size() <= 128);
+    }
+
+    // До 5 соавторов, без повторов и без самого автора.
+    function validCoAuthors(d) {
+      let list = d.coAuthors;
+      return list is list && list.size() <= 5
+        && uidAt(list, 0) && uidAt(list, 1) && uidAt(list, 2) && uidAt(list, 3) && uidAt(list, 4)
+        && list.toSet().size() == list.size()
+        && !(d.authorId in list);
+    }
+
+    // Список соавторов меняет только автор (или админ), в любом статусе курса.
+    function isCoAuthorsChange() {
+      return isCourseAuthor(resource.data)
+        && onlyChanges(['coAuthors', 'updatedAt'])
+        && request.resource.data.updatedAt == request.time
+        && validCoAuthors(request.resource.data);
     }
 
     function validCourseMeta(d) {
@@ -470,15 +501,19 @@ service cloud.firestore {
 
     match /courses/{courseId} {
       allow get: if canManageCourse(resource.data);
-      // Запрос обязан фильтровать по authorId == своему uid (или быть от админа).
-      allow list: if signedIn() && (resource.data.authorId == request.auth.uid || isAdmin());
+      // Запрос обязан фильтровать по authorId == своему uid, по coAuthors
+      // array-contains своего uid (курсы, где пользователь соавтор) или быть от админа.
+      allow list: if signedIn() && (resource.data.authorId == request.auth.uid
+        || request.auth.uid in resource.data.get('coAuthors', []) || isAdmin());
 
       allow create: if isValidCourseCreate();
       allow update: if (canManageCourse(resource.data) && isActiveUser()
           && (isContentEdit() || isAuthorStatusChange()))
+        || (isActiveUser() && isCoAuthorsChange())
         || isModeration(courseId);
       // Подколлекции клиент удаляет до самого курса (см. courseService.deleteCourse).
-      allow delete: if canManageCourse(resource.data) && isActiveUser();
+      // Соавтор удалить курс не может.
+      allow delete: if isCourseAuthor(resource.data) && isActiveUser();
 
       // Курс после текущей записи (в пакетной записи создания курса он ещё не существует до неё).
       function courseAfter() {
@@ -500,7 +535,7 @@ service cloud.firestore {
       // Удаление контента: в черновике — при правке, в любом статусе — при удалении курса.
       function canDeleteContent() {
         return canWriteContent()
-          || (exists(coursePath(courseId)) && canManageCourse(get(coursePath(courseId)).data) && isActiveUser());
+          || (exists(coursePath(courseId)) && isCourseAuthor(get(coursePath(courseId)).data) && isActiveUser());
       }
 
       match /lessons/{lessonId} {
@@ -716,8 +751,10 @@ service cloud.firestore {
           && d.wrong == wrongBefore + (getAfter(marker).data.correct ? 0 : 1);
       }
 
+      // Статистику видят и соавторы (по рабочей версии курса — список там актуальнее).
       match /taskStats/{statId} {
-        allow read: if isPublicOwner();
+        allow read: if isPublicOwner()
+          || (exists(coursePath(courseId)) && request.auth.uid in get(coursePath(courseId)).data.get('coAuthors', []));
         allow create, update: if isTaskStatIncrement(statId);
         allow delete: if isPublicOwner();
       }

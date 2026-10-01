@@ -31,7 +31,7 @@ const TABS = [
 
 export default function CourseEditorPage() {
   const { courseId } = useParams();
-  const { isBanned, user } = useAuth();
+  const { isBanned, isAdmin, user } = useAuth();
   const [tab, setTab] = useState('lessons');
   const [withdrawing, setWithdrawing] = useState(false);
   const [actionError, setActionError] = useState('');
@@ -102,6 +102,8 @@ export default function CourseEditorPage() {
   }, []);
 
   const readOnly = isBanned || course?.status === COURSE_STATUS.PENDING_REVIEW;
+  // Соавтор (v2) правит как автор, но не удаляет курс и не меняет соавторов.
+  const isAuthor = Boolean(course && (course.authorId === user?.uid || isAdmin));
   const contextValue = useMemo(
     () =>
       course
@@ -109,13 +111,14 @@ export default function CourseEditorPage() {
             course,
             courseId,
             readOnly,
+            isAuthor,
             ensureDraft,
             dictionary,
             registerAutosave,
             flushAll,
           }
         : null,
-    [course, courseId, readOnly, ensureDraft, dictionary, registerAutosave, flushAll],
+    [course, courseId, readOnly, isAuthor, ensureDraft, dictionary, registerAutosave, flushAll],
   );
 
   async function handleWithdraw() {
@@ -152,6 +155,7 @@ export default function CourseEditorPage() {
                   <div className={styles.meta}>
                     <StatusBadge status={course.status} />
                     <span>{course.language}</span>
+                    {!isAuthor && <span>Вы соавтор</span>}
                   </div>
                 </div>
               </div>

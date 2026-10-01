@@ -10,12 +10,13 @@ import { useAutosave } from '../../hooks/useAutosave.js';
 import { deleteCourse, updateCourseMeta, validateCourseMeta } from '../../services/courseService.js';
 import { exportCourse } from '../../services/courseTransferService.js';
 import { toUserMessage } from '../../services/errors.js';
+import CoAuthorsSection from './CoAuthorsSection.jsx';
 import { useCourseEditor } from './courseEditorContext.js';
 import styles from './SettingsTab.module.css';
 
 /** Метаданные курса, категории разметки и удаление. */
 export default function SettingsTab() {
-  const { course, courseId, readOnly, ensureDraft, registerAutosave } = useCourseEditor();
+  const { course, courseId, readOnly, isAuthor, ensureDraft, registerAutosave } = useCourseEditor();
   const navigate = useNavigate();
   // Локальная копия: входящие снимки не перетирают то, что сейчас печатается.
   const [form, setForm] = useState(() => ({
@@ -153,14 +154,18 @@ export default function SettingsTab() {
         </Button>
       </section>
 
-      <section className={`${styles.card} ${styles.danger}`}>
-        <h2>Удаление курса</h2>
-        <p>Курс, все уроки, словарь, комментарии и оценки будут удалены без возможности восстановления.</p>
-        {deleteError && <Alert tone="error">{deleteError}</Alert>}
-        <Button variant="danger" onClick={handleDelete} loading={deleting}>
-          Удалить курс
-        </Button>
-      </section>
+      <CoAuthorsSection />
+
+      {isAuthor && (
+        <section className={`${styles.card} ${styles.danger}`}>
+          <h2>Удаление курса</h2>
+          <p>Курс, все уроки, словарь, комментарии и оценки будут удалены без возможности восстановления.</p>
+          {deleteError && <Alert tone="error">{deleteError}</Alert>}
+          <Button variant="danger" onClick={handleDelete} loading={deleting}>
+            Удалить курс
+          </Button>
+        </section>
+      )}
     </div>
   );
 }

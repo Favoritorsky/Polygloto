@@ -26,3 +26,34 @@
 .danger {
   border-color: var(--color-danger-border);
 }
+
+.note {
+  color: var(--color-text-muted);
+}
+
+.coAuthors {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.coAuthors li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.coAuthorForm {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.75rem;
+}
+
+.coAuthorForm > :first-child {
+  flex: 1 1 280px;
+}

@@ -2,7 +2,7 @@ import { createContext, useContext } from 'react';
 
 /**
  * Контекст редактора курса:
- * { course, courseId, readOnly, ensureDraft(): Promise<void>, dictionary,
+ * { course, courseId, readOnly, isAuthor, ensureDraft(): Promise<void>, dictionary,
  *   registerAutosave({ flush, hasPending }) → unregister, flushAll(): Promise<boolean> }
  * ensureDraft() вызывается перед каждой записью: если курс опубликован или
  * отклонён, он сначала переводится в черновик (новая версия), опубликованный

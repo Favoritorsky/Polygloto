@@ -115,6 +115,8 @@ export const LIMITS = Object.freeze({
   COURSE_LANGUAGE_MAX: 60,
   COURSE_DESCRIPTION_MAX: 2000,
   COURSE_CATEGORIES_MAX: 20,
+  /** Соавторы курса (v2). */
+  COAUTHORS_MAX: 5,
   CATEGORY_NAME_MAX: 40,
   CATEGORY_ABBR_MAX: 12,
 

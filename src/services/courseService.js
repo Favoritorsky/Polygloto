@@ -97,15 +97,46 @@ const millis = (value) => value?.toMillis?.() ?? 0;
  * создать не может.
  */
 export function subscribeToMyCourses(uid, onData, onError) {
-  const q = query(collection(db, COLLECTIONS.COURSES), where('authorId', '==', uid));
-  return onSnapshot(
-    q,
-    (snap) => {
-      const courses = snap.docs.map((d) => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) }));
-      onData(courses.sort((a, b) => millis(b.updatedAt) - millis(a.updatedAt)));
-    },
-    onError,
-  );
+  // Два запроса: свои курсы и курсы, где пользователь соавтор (v2).
+  const parts = { own: null, co: null };
+  const emit = () => {
+    if (!parts.own || !parts.co) return;
+    const courses = [...parts.own, ...parts.co.map((c) => ({ ...c, isCoAuthor: true }))];
+    onData(courses.sort((a, b) => millis(b.updatedAt) - millis(a.updatedAt)));
+  };
+  const listen = (key, q) =>
+    onSnapshot(
+      q,
+      (snap) => {
+        parts[key] = snap.docs.map((d) => ({ id: d.id, ...d.data({ serverTimestamps: 'estimate' }) }));
+        emit();
+      },
+      onError,
+    );
+  const courses = collection(db, COLLECTIONS.COURSES);
+  const unsubs = [
+    listen('own', query(courses, where('authorId', '==', uid))),
+    listen('co', query(courses, where('coAuthors', 'array-contains', uid))),
+  ];
+  return () => unsubs.forEach((u) => u());
+}
+
+/** Меняет список соавторов (только автор; правила проверяют длину, повторы и автора). */
+export function setCoAuthors(courseId, coAuthors) {
+  return updateDoc(courseRef(courseId), { coAuthors, updatedAt: serverTimestamp() });
+}
+
+/**
+ * Пользователь по ссылке на профиль (…/users/{uid}) или по самому uid.
+ * Возвращает { uid, displayName } или null, если такого нет.
+ */
+export async function findUserByProfileRef(input) {
+  const text = String(input ?? '').trim();
+  const match = text.match(/\/users\/([A-Za-z0-9_-]{1,128})\/?(?:[?#].*)?$/);
+  const uid = match ? match[1] : text;
+  if (!/^[A-Za-z0-9_-]{1,128}$/.test(uid)) return null;
+  const snap = await getDoc(doc(db, COLLECTIONS.USERS, uid));
+  return snap.exists() ? { uid, displayName: snap.data().displayName } : null;
 }
 
 /** Сохраняет метаданные курса (только в статусе draft — см. правила). */
@@ -145,7 +176,8 @@ export async function deleteCourse(courseId) {
   if (isPublished) {
     await deleteAllDocs(collection(course, SUBCOLLECTIONS.COMMENTS), deleteCommentInBatch);
     await deleteAllDocs(collection(course, SUBCOLLECTIONS.REACTIONS));
-    for (const name of [...CONTENT_SUBCOLLECTIONS, SUBCOLLECTIONS.AUDIO, SUBCOLLECTIONS.TASK_STATS]) await deleteAllDocs(collection(publicRef, name));
+    for (const name of [...CONTENT_SUBCOLLECTIONS, SUBCOLLECTIONS.AUDIO, SUBCOLLECTIONS.TASK_STATS])
+      await deleteAllDocs(collection(publicRef, name));
     await deleteDoc(publicRef);
   }
   for (const name of [...CONTENT_SUBCOLLECTIONS, SUBCOLLECTIONS.AUDIO]) await deleteAllDocs(collection(course, name));

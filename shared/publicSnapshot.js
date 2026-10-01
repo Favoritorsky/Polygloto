@@ -21,6 +21,15 @@ function cleanOrder(order, ids) {
   return result;
 }
 
+/** Список соавторов: строки, без повторов и без автора, не больше LIMITS.COAUTHORS_MAX. */
+export function cleanCoAuthors(list, authorId) {
+  if (!Array.isArray(list)) return [];
+  return [...new Set(list.filter((uid) => typeof uid === 'string' && uid && uid.length <= 128 && uid !== authorId))].slice(
+    0,
+    LIMITS.COAUTHORS_MAX,
+  );
+}
+
 /**
  * course — данные courses/{id}; lessons/reference/dictionary — массивы { id, data }.
  * Возвращает { meta, lessons, reference, dictionary } для записи в publicCourses.
@@ -51,6 +60,8 @@ export function buildPublicSnapshot({ course, author, lessons, reference, dictio
     meta: {
       authorId: course.authorId,
       authorName: author?.displayName ?? 'Автор',
+      // Соавторы (v2) — для подписи на странице курса.
+      coAuthors: cleanCoAuthors(course.coAuthors, course.authorId),
       title,
       language,
       description: String(course.description ?? '').slice(0, LIMITS.COURSE_DESCRIPTION_MAX),

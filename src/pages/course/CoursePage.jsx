@@ -1,4 +1,5 @@
 import AudioSourceProvider from '../../audio/AudioSourceProvider.jsx';
+import CoAuthorsLine from '../../components/course/CoAuthorsLine.jsx';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import RatingButtons from '../../components/course/RatingButtons.jsx';
@@ -112,6 +113,7 @@ export default function CoursePage() {
                     <p className={styles.author}>
                       Автор: <Link to={`/users/${course.authorId}`}>{course.authorName || 'Без имени'}</Link>
                     </p>
+                    <CoAuthorsLine uids={course.coAuthors} className={styles.author} />
                     {course.description && <p className={styles.description}>{course.description}</p>}
                     <ul className={styles.stats}>
                       <li>Уроков: {course.lessonsCount ?? 0}</li>

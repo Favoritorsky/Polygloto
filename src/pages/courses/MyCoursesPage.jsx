@@ -105,6 +105,7 @@ export default function MyCoursesPage() {
                 </CardLink>
                 <div className={styles.meta}>
                   <span>{course.language}</span>
+                  {course.isCoAuthor && <span>Вы соавтор</span>}
                   <span>Изменён {formatDate(course.updatedAt)}</span>
                   {course.hasPublishedVersion && course.status !== 'published' && <span>Опубликованная версия доступна читателям</span>}
                 </div>
