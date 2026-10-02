@@ -73,6 +73,9 @@ jobs:
       # Деплой через REST API (не `firebase deploy`): см. комментарий в скрипте.
       - name: Деплой правил и сайта
         run: node scripts/deploy-firebase.mjs rules hosting
+      # Курируемый список языков и languageCategory у старых курсов (повторный запуск безопасен).
+      - name: Миграция языков курсов
+        run: node scripts/migrate-languages.mjs
       - name: Настройки писем Auth
         run: node scripts/configure-auth.mjs
       - name: Назначение администратора

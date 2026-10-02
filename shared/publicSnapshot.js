@@ -64,6 +64,9 @@ export function buildPublicSnapshot({ course, author, lessons, reference, dictio
       coAuthors: cleanCoAuthors(course.coAuthors, course.authorId),
       title,
       language,
+      // Категория языка (shared/languages.js) — для фильтров каталога «язык из списка» и «Конланги».
+      languageCategory: course.languageCategory === 'official' && course.languageId ? 'official' : 'custom',
+      languageId: course.languageCategory === 'official' && course.languageId ? course.languageId : null,
       description: String(course.description ?? '').slice(0, LIMITS.COURSE_DESCRIPTION_MAX),
       categories,
       lessonOrder: cleanOrder(course.lessonOrder, cleanLessons.map((l) => l.id)),

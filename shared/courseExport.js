@@ -52,6 +52,8 @@ export function buildCourseExport({ course, lessons, reference, dictionary, audi
     course: {
       title: str(course.title, LIMITS.COURSE_TITLE_MAX),
       language: str(course.language, LIMITS.COURSE_LANGUAGE_MAX),
+      // Необязательное поле: при импорте 'official' снова сверяется с курируемым списком языков.
+      ...(course.languageCategory === 'custom' && { languageCategory: 'custom' }),
       description: str(course.description, LIMITS.COURSE_DESCRIPTION_MAX),
       categories,
     },
@@ -126,7 +128,14 @@ export function parseCourseImport(text) {
 
   return {
     data: {
-      course: { title, language, description: str(course.description, LIMITS.COURSE_DESCRIPTION_MAX), categories },
+      course: {
+        title,
+        language,
+        // 'custom' из файла сохраняется; иначе категорию определяет курируемый список при импорте.
+        languageCategory: course.languageCategory === 'custom' ? 'custom' : null,
+        description: str(course.description, LIMITS.COURSE_DESCRIPTION_MAX),
+        categories,
+      },
       lessons,
       reference,
       dictionary,

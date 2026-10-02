@@ -1,6 +1,6 @@
 // v2, этап 5: соавторы — автор добавляет соавтора по ссылке на профиль,
 // соавтор правит черновик, но не удаляет курс и не меняет список соавторов.
-import { BASE, assert, launch, newPage, register, uidOf, uniqueEmail } from './lib.mjs';
+import { BASE, assert, launch, newPage, register, uidOf, uniqueEmail, chooseLanguage } from './lib.mjs';
 
 const browser = await launch();
 try {
@@ -14,7 +14,7 @@ try {
   await author.goto(`${BASE}/my-courses`);
   await author.getByRole('button', { name: '+ Новый курс' }).click();
   await author.getByLabel('Название курса').fill('Курс вдвоём');
-  await author.getByLabel('Язык').fill('Испанский');
+  await chooseLanguage(author, 'Испанский');
   await author.getByRole('button', { name: 'Создать черновик' }).click();
   await author.waitForURL('**/courses/*/edit');
   const editUrl = author.url();

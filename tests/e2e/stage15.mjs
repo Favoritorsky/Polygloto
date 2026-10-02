@@ -4,7 +4,7 @@
 import { getApps, initializeApp } from 'firebase-admin/app';
 import { FieldValue, Timestamp, getFirestore } from 'firebase-admin/firestore';
 import { buildSearchKeywords, normalizeText } from '../../shared/schema.js';
-import { BASE, assert, launch, newPage, register, uniqueEmail } from './lib.mjs';
+import { BASE, assert, launch, newPage, register, uniqueEmail, chooseLanguage } from './lib.mjs';
 
 process.env.FIRESTORE_EMULATOR_HOST ??= '127.0.0.1:8080';
 const db = getFirestore(getApps()[0] ?? initializeApp({ projectId: 'demo-polygloto' }));
@@ -67,7 +67,7 @@ try {
   await page.goto(`${BASE}/my-courses`);
   await page.getByRole('button', { name: '+ Новый курс' }).click();
   await page.getByLabel('Название курса').fill(`Мой ${tag}`);
-  await page.getByLabel('Язык').fill('Испанский');
+  await chooseLanguage(page, 'Испанский');
   await page.getByRole('button', { name: 'Создать черновик' }).click();
   await page.waitForURL('**/courses/*/edit');
   const editUrl = page.url();

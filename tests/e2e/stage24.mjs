@@ -4,7 +4,7 @@ import { PART_OF_SPEECH_IDS } from '../../shared/schema.js';
 import { writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { BASE, assert, launch, newPage, register, uniqueEmail } from './lib.mjs';
+import { BASE, assert, launch, newPage, register, uniqueEmail, chooseLanguage } from './lib.mjs';
 import { adminDb } from './seed.mjs';
 
 const wavFile = join(tmpdir(), `pron-${Date.now()}.wav`);
@@ -32,7 +32,7 @@ try {
   await page.goto(`${BASE}/my-courses`);
   await page.getByRole('button', { name: '+ Новый курс' }).click();
   await page.getByLabel('Название курса').fill('Аудио в тексте');
-  await page.getByLabel('Язык').fill('Испанский');
+  await chooseLanguage(page, 'Испанский');
   await page.getByRole('button', { name: 'Создать черновик' }).click();
   await page.waitForURL('**/courses/*/edit');
   const courseId = page.url().split('/courses/')[1].split('/')[0];

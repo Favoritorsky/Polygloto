@@ -14,12 +14,12 @@ async function seedPublishedCourse(authorId) {
   const ref = db.collection('publicCourses').doc();
   const now = FieldValue.serverTimestamp();
   await db.collection('courses').doc(ref.id).set({
-    authorId, title: 'Эсперанто за неделю', language: 'Эсперанто', description: '', categories: [],
+    authorId, title: 'Эсперанто за неделю', language: 'Эсперанто', languageCategory: 'custom', languageId: null, description: '', categories: [],
     lessonOrder: ['l1', 'l2'], referenceOrder: ['r1'], status: 'published', hasPublishedVersion: true,
     createdAt: now, updatedAt: now,
   });
   await ref.set({
-    authorId, authorName: 'Автор Эсперанто', title: 'Эсперанто за неделю', language: 'Эсперанто',
+    authorId, authorName: 'Автор Эсперанто', title: 'Эсперанто за неделю', language: 'Эсперанто', languageCategory: 'custom', languageId: null,
     description: 'Короткий курс для начинающих.',
     categories: [{ id: 'verb', name: 'Глаголы', color: '#e76f51' }],
     lessonOrder: ['l1', 'l2'], referenceOrder: ['r1'],

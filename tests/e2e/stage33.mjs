@@ -28,7 +28,7 @@ try {
   await draft.set({
     authorId: uid,
     title: draftTitle,
-    language: 'Испанский',
+    language: 'Испанский', languageCategory: 'custom', languageId: null,
     description: '',
     categories: [],
     lessonOrder: [],

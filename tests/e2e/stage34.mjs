@@ -1,7 +1,7 @@
 // Карточка слова в словаре: по клику на любое место карточки открывается окно
 // с полной статьёй (произношение, часть речи, перевод, все примеры, заметки).
 // В редакторе в окне есть те же кнопки «Изменить» и «Удалить».
-import { BASE, assert, launch, newPage, register, uniqueEmail } from './lib.mjs';
+import { BASE, assert, launch, newPage, register, uniqueEmail, chooseLanguage } from './lib.mjs';
 import { seedPublishedCourse } from './seed.mjs';
 
 const dictionary = [
@@ -49,7 +49,7 @@ try {
   await page.goto(`${BASE}/my-courses`);
   await page.getByRole('button', { name: '+ Новый курс' }).click();
   await page.getByLabel('Название курса').fill('Окно слова');
-  await page.getByLabel('Язык').fill('Французский');
+  await chooseLanguage(page, 'Французский');
   await page.getByRole('button', { name: 'Создать черновик' }).click();
   await page.waitForURL('**/courses/*/edit');
   await page.getByRole('tab', { name: 'Словарь' }).click();

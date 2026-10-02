@@ -75,3 +75,11 @@ export function assert(condition, message) {
   if (!condition) throw new Error(`Assertion failed: ${message}`);
   console.log(`  ✓ ${message}`);
 }
+
+/** Язык в форме курса: пункт «Другой язык» и название (из списка оно станет «официальным» само). */
+export async function chooseLanguage(page, name) {
+  const select = page.getByLabel('Язык', { exact: true });
+  await select.locator('option', { hasText: 'Другой язык' }).waitFor({ state: 'attached' });
+  await select.selectOption({ label: 'Другой язык' });
+  await page.getByLabel('Название языка').fill(name);
+}

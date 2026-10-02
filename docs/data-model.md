@@ -30,7 +30,8 @@ publicCourses/{courseId}      ← опубликованный снимок. П�
   reference/{sectionId}
   dictionary/{wordId}
 
-catalogMeta/languages         ← список языков для фильтра каталога (пишет админ при публикации)
+catalogMeta/languages         ← число курсов по языкам для фильтра каталога (пишет админ при публикации)
+curatedLanguages/{languageId} ← курируемый список языков (ведёт админ, читают все)
 ```
 
 Когда админ одобряет курс, его браузер (`approveCourse` в
@@ -191,7 +192,9 @@ request.time`, обновлять нельзя). Кнопка «Урок про�
 | `authorId` | string (uid) | **protected** (неизменяемо) | Автор |
 | `coAuthors` | array ≤5 of uid (необязательно, v2) | только автор (в любом статусе) | Соавторы: без повторов и без самого автора |
 | `title` | string 3–120 | автор | Название |
-| `language` | string 2–60 | автор | Изучаемый язык (поиск/фильтр) |
+| `language` | string 2–60 | автор | Название изучаемого языка (поиск, карточка курса) |
+| `languageCategory` | `"official"` \| `"custom"` | автор, **проверяется правилами** | `official` — язык выбран из `curatedLanguages`; `custom` — «Другой язык», своё название (конланги и языки, которых пока нет в списке) |
+| `languageId` | string \| null | автор, **проверяется правилами** | id из `curatedLanguages` для `official`, `null` для `custom`. Правила пропускают `official` только если документ языка существует и его `name` **точно** равен `language` |
 | `description` | string ≤2000 | автор | Описание |
 | `categories` | array ≤20 of `{ id: string, name: string ≤40, color: "#rrggbb", abbr?: string ≤12, group: "grammar" \| "phonetics" \| "custom" }` | автор | Категории разметки текста (части речи, звуки…): цвет подчёркивания, необязательное сокращение («сущ.») и набор, к которому относится. Новый курс создаётся с готовыми наборами (см. «Категории разметки» ниже) |
 | `lessonOrder` | array of lessonId | автор | Порядок уроков |
@@ -324,7 +327,8 @@ ID документа детерминирован — это и есть «од
 | `authorName` | string | Имя автора (обновляется при смене имени в профиле) |
 | `coAuthors` | array of uid (v2) | Соавторы на момент одобрения — подпись на странице курса |
 | `title`, `language`, `description`, `categories`, `lessonOrder`, `referenceOrder` | как в `courses` | Снимок одобренной версии |
-| `titleLower`, `languageLower` | string | `normalizeText(...)` — фильтр по языку |
+| `languageCategory`, `languageId` | как в `courses` | Фильтр каталога: язык из списка (`languageId == …`) или «Конланги» (`languageCategory == "custom"`). При одобрении проверяется, что язык ещё в списке |
+| `titleLower`, `languageLower` | string | `normalizeText(...)` — поиск; `languageLower` — фильтр по старым ссылкам `?lang=название` |
 | `searchKeywords` | array of string | Префиксы слов названия и языка (`buildSearchKeywords`) для поиска |
 | `likesCount`, `dislikesCount` | number | Денормализованные агрегаты (транзакция голосования) |
 | `score` | number | `likesCount − dislikesCount` — сортировка «по рейтингу» |
@@ -357,9 +361,17 @@ ID документа детерминирован — это и есть «од
 
 - без поиска и фильтра — `orderBy(поле сортировки)` с постраничным чтением;
 - с поиском (`searchKeywords array-contains <самое длинное слово>`) и/или
-  фильтром (`languageLower == …`) — запрос без `orderBy`, до 300 курсов;
+  фильтром по языку — запрос без `orderBy`, до 300 курсов;
   остальные слова поиска и сортировка (`sortCourses`) — на клиенте,
   «Показать ещё» листает эту выборку без новых чтений.
+
+Фильтр по языку (`?lang=` в адресе, `catalogLanguageFilter` в `shared/languages.js`):
+
+- пусто — «Все языки», без фильтра;
+- id языка из `curatedLanguages` — `languageId == id` (только `official`-курсы);
+- `conlangs` — «Конланги»: `languageCategory == "custom"`, то есть все курсы
+  со своим языком, будь то конланг или естественный язык, которого нет в списке;
+- любое другое значение — старая ссылка с названием: `languageLower == …`.
 
 Сортировки: `score desc`, `likesCount desc`, `dislikesCount asc`,
 `publishedAt desc` (`src/catalog/catalogQuery.js`). Курсы автора и очередь
@@ -372,6 +384,35 @@ ID документа детерминирован — это и есть «од
 Если автор удалит опубликованный курс, счётчик языка обновится при следующем
 одобрении курса на том же языке.
 `{ items: [{ key: languageLower, name: language, count }] }`, отсортировано по названию.
+
+## `curatedLanguages/{languageId}`
+
+Курируемый список языков: `{ name: string 2–60 }`. Читают все (и гости);
+создаёт, переименовывает и удаляет только админ (админ-панель → «Языки»).
+Названия в списке не повторяются без учёта регистра (проверка в админке).
+
+- Из списка строится выпадающий список «Язык» в форме курса (плюс пункт
+  «Другой язык» с полем для своего названия) и пункты фильтра каталога.
+- Переименование: браузер админа сразу обновляет `language`, `languageLower` и
+  `searchKeywords` у опубликованных курсов с этим `languageId` и переносит
+  счётчик в `catalogMeta/languages`. Черновики получают новое название при
+  следующем сохранении настроек или при отправке на проверку
+  (`languageFieldsNeedFix`).
+- Удаление: опубликованные курсы с этим языком становятся `custom` (видны в
+  «Конлангах»), черновики — при следующей правке или отправке на проверку.
+
+### Миграция существующих курсов
+
+`scripts/migrate-languages.mjs` запускается при каждом деплое (после правил):
+
+1. Один раз (отметка `catalogMeta/migrations.curatedLanguagesSeededAt`)
+   заполняет `curatedLanguages` всеми языками, которые встречаются в `courses`
+   и `publicCourses`; для разных написаний одного языка берётся самое частое.
+2. Каждый запуск ставит `languageCategory` (и `languageId`) курсам и снимкам,
+   у которых его нет: `official`, если `language` точно (с учётом регистра)
+   совпадает с названием из списка, иначе `custom`. Поле `language` не меняется.
+
+Флаг `--dry-run` печатает план без записи.
 
 ## `commentAuthors/{commentId}`
 
@@ -503,7 +544,7 @@ Firestore не поддерживает вложенные массивы, по�
 ## Файл экспорта курса (v2)
 
 `shared/courseExport.js`. JSON `{ format: 'polygloto-course', version: 1,
-exportedAt, course: { title, language, description, categories }, lessons:
+exportedAt, course: { title, language, languageCategory?, description, categories }, lessons:
 [{ title, blocks }], reference: [...], dictionary: [{ id, word, translation,
 partOfSpeech, examples, notes }], audio: [{ id, dataUrl, name }] }`. Уроки и
 разделы — в порядке курса; id слов и аудио сохраняются, чтобы ссылки из
@@ -511,6 +552,10 @@ partOfSpeech, examples, notes }], audio: [{ id, dataUrl, name }] }`. Уроки 
 пропускает всё через те же функции очистки (неизвестные блоки, поля и
 недопустимые ссылки отбрасываются, о пропусках — предупреждения). Новая
 версия формата повышает `version`; старые версии продолжают читаться.
+
+Язык при импорте: если в файле `languageCategory: "custom"`, курс остаётся со
+своим языком; иначе он становится `official`, когда `language` точно совпадает
+с названием из `curatedLanguages`, и `custom` в остальных случаях.
 
 ## Файлы
 

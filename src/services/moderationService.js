@@ -187,6 +187,11 @@ export async function approveCourse(courseId, moderatorId) {
     reference,
     dictionary,
   });
+  // Язык могли убрать из курируемого списка, пока курс ждал проверки: тогда он «Другой язык».
+  if (snapshot.meta.languageId && !(await getDoc(doc(db, COLLECTIONS.CURATED_LANGUAGES, snapshot.meta.languageId))).exists()) {
+    snapshot.meta.languageCategory = 'custom';
+    snapshot.meta.languageId = null;
+  }
   const previous = previousSnap.exists() ? previousSnap.data() : null;
 
   await writeSnapshotSections(publicRef, snapshot);

@@ -1,5 +1,5 @@
 // Этап 7: все пять типов заданий — создание в редакторе и прохождение в предпросмотре.
-import { BASE, assert, launch, newPage, register, uniqueEmail } from './lib.mjs';
+import { BASE, assert, launch, newPage, register, uniqueEmail, chooseLanguage } from './lib.mjs';
 
 const browser = await launch();
 try {
@@ -8,7 +8,7 @@ try {
   await page.goto(`${BASE}/my-courses`);
   await page.getByRole('button', { name: '+ Новый курс' }).click();
   await page.getByLabel('Название курса').fill('Токипона: упражнения');
-  await page.getByLabel('Язык').fill('Токипона');
+  await chooseLanguage(page, 'Токипона');
   await page.getByRole('button', { name: 'Создать черновик' }).click();
   await page.waitForURL('**/courses/*/edit');
 

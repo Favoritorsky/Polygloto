@@ -20,7 +20,7 @@ try {
   await ref.set({
     authorId: uid,
     title: 'Курс для переноса',
-    language: 'Испанский',
+    language: 'Испанский', languageCategory: 'custom', languageId: null,
     description: 'Проверка экспорта',
     categories: [{ id: 'g_noun', name: 'Существительное', color: '#2a9d8f', group: 'grammar', abbr: 'сущ.' }],
     lessonOrder: ['l2', 'l1'],

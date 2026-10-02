@@ -20,6 +20,7 @@ export const COLLECTIONS = Object.freeze({
   USER_STATS: 'userStats',
   LEADERBOARDS: 'leaderboards',
   FOLLOWS: 'follows',
+  CURATED_LANGUAGES: 'curatedLanguages',
 });
 
 /** catalogMeta/languages — список языков опубликованных курсов (обновляет админ при одобрении). */

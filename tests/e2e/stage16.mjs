@@ -1,7 +1,7 @@
 // Доработки после запуска, задачи 2–3: таблица с заголовками по строке и по столбцу
 // (все сочетания флагов, угловая ячейка, добавление/удаление строк и столбцов),
 // новая таблица пустая 2×2 с подсказками-плейсхолдерами.
-import { BASE, assert, launch, newPage, register, uniqueEmail } from './lib.mjs';
+import { BASE, assert, launch, newPage, register, uniqueEmail, chooseLanguage } from './lib.mjs';
 
 const browser = await launch();
 try {
@@ -10,7 +10,7 @@ try {
   await page.goto(`${BASE}/my-courses`);
   await page.getByRole('button', { name: '+ Новый курс' }).click();
   await page.getByLabel('Название курса').fill('Таблицы с заголовками');
-  await page.getByLabel('Язык').fill('Испанский');
+  await chooseLanguage(page, 'Испанский');
   await page.getByRole('button', { name: 'Создать черновик' }).click();
   await page.waitForURL('**/courses/*/edit');
   const courseUrl = page.url();

@@ -1,5 +1,5 @@
 // Этап 4: регистрация → создание черновика → автосохранение → перезагрузка.
-import { BASE, assert, launch, newPage, register, uniqueEmail } from './lib.mjs';
+import { BASE, assert, launch, newPage, register, uniqueEmail, chooseLanguage } from './lib.mjs';
 
 const browser = await launch();
 try {
@@ -12,7 +12,7 @@ try {
   await page.goto(`${BASE}/my-courses`);
   await page.getByRole('button', { name: '+ Новый курс' }).click();
   await page.getByLabel('Название курса').fill('Квенья для начинающих');
-  await page.getByLabel('Язык').fill('Квенья');
+  await chooseLanguage(page, 'Квенья');
   await page.getByRole('button', { name: 'Создать черновик' }).click();
   await page.waitForURL('**/courses/*/edit');
   await page.getByRole('heading', { name: 'Квенья для начинающих' }).waitFor();

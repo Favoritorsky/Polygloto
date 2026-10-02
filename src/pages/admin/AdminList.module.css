@@ -49,3 +49,21 @@
     flex-basis: 100%;
   }
 }
+
+.intro {
+  max-width: 48rem;
+  color: var(--color-text-muted);
+}
+
+.addRow {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  max-width: 32rem;
+  margin-bottom: 1rem;
+}
+
+.addRow input {
+  flex: 1;
+  min-width: 12rem;
+}

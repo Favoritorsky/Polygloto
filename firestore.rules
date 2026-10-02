@@ -422,9 +422,26 @@ service cloud.firestore {
         && validCoAuthors(request.resource.data);
     }
 
+    function curatedLanguagePath(id) {
+      return /databases/$(database)/documents/curatedLanguages/$(id);
+    }
+
+    // Язык курса (shared/languages.js): 'custom' — своё название без languageId;
+    // 'official' — только с существующим languageId и ровно тем названием, что в
+    // курируемом списке. Так клиент не может пометить свой язык официальным.
+    function validCourseLanguage(d) {
+      let category = d.get('languageCategory', null);
+      let id = d.get('languageId', null);
+      return (category == 'custom' && id == null)
+        || (category == 'official' && id is string && id.size() > 0 && id.size() <= 128
+          && exists(curatedLanguagePath(id))
+          && get(curatedLanguagePath(id)).data.name == d.language);
+    }
+
     function validCourseMeta(d) {
       return isStringOfLength(d.title, 3, 120)
         && isStringOfLength(d.language, 2, 60)
+        && validCourseLanguage(d)
         && isStringOfLength(d.description, 0, 2000)
         && d.categories is list && d.categories.size() <= 20
         && d.lessonOrder is list && d.lessonOrder.size() <= 200
@@ -436,7 +453,7 @@ service cloud.firestore {
     function isValidCourseCreate() {
       let d = request.resource.data;
       return isActiveUser()
-        && d.keys().hasOnly(['authorId', 'title', 'language', 'description', 'categories', 'lessonOrder',
+        && d.keys().hasOnly(['authorId', 'title', 'language', 'languageCategory', 'languageId', 'description', 'categories', 'lessonOrder',
                              'referenceOrder', 'status', 'rejectionReason', 'hasPublishedVersion',
                              'submittedAt', 'createdAt', 'updatedAt'])
         && d.authorId == request.auth.uid
@@ -457,7 +474,7 @@ service cloud.firestore {
     function isContentEdit() {
       return resource.data.status == 'draft'
         && request.resource.data.status == 'draft'
-        && onlyChanges(['title', 'language', 'description', 'categories',
+        && onlyChanges(['title', 'language', 'languageCategory', 'languageId', 'description', 'categories',
                         'lessonOrder', 'referenceOrder', 'updatedAt'])
         && request.resource.data.updatedAt == request.time
         && validCourseMeta(request.resource.data);
@@ -801,6 +818,16 @@ service cloud.firestore {
           || (exists(publicPath(courseId)) && get(publicPath(courseId)).data.authorId == request.auth.uid)
           || (exists(coursePath(courseId)) && get(coursePath(courseId)).data.authorId == request.auth.uid));
       }
+    }
+
+    // ---------- curatedLanguages/{languageId} ----------
+    // Курируемый список языков (ведёт админ): выбор языка курса и фильтр каталога.
+    match /curatedLanguages/{languageId} {
+      allow read: if true;
+      allow create, update: if isAdmin()
+        && request.resource.data.keys().hasOnly(['name'])
+        && isStringOfLength(request.resource.data.name, 2, 60);
+      allow delete: if isAdmin();
     }
 
     // ---------- catalogMeta/{docId} ----------

@@ -3,7 +3,7 @@
 import { writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { BASE, assert, launch, newPage, register, setRole, uidOf, uniqueEmail, verifyEmail } from './lib.mjs';
+import { BASE, assert, launch, newPage, register, setRole, uidOf, uniqueEmail, verifyEmail, chooseLanguage } from './lib.mjs';
 
 /** Короткий WAV (тишина 0,2 с, 8 кГц, 8 бит, моно). */
 function wav(seconds = 0.2) {
@@ -37,7 +37,7 @@ try {
   await author.goto(`${BASE}/my-courses`);
   await author.getByRole('button', { name: '+ Новый курс' }).click();
   await author.getByLabel('Название курса').fill('Испанский: новые задания');
-  await author.getByLabel('Язык').fill('Испанский');
+  await chooseLanguage(author, 'Испанский');
   await author.getByRole('button', { name: 'Создать черновик' }).click();
   await author.waitForURL('**/courses/*/edit');
   const courseId = author.url().split('/courses/')[1].split('/')[0];

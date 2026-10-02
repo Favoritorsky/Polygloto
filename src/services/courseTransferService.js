@@ -3,11 +3,13 @@
  * Формат и очистка — shared/courseExport.js.
  */
 import { collection, doc, getDoc, getDocs, serverTimestamp, writeBatch } from 'firebase/firestore';
+import { LANGUAGE_CATEGORY, languageFieldsForName } from '../../shared/languages.js';
 import { buildCourseExport, exportFileName, IMPORT_LIMITS, parseCourseImport } from '../../shared/courseExport.js';
 import { COLLECTIONS, RATE_LIMITS, SUBCOLLECTIONS, normalizeText, LIMITS } from '../../shared/schema.js';
 import { createCourse } from './courseService.js';
 import { UserFacingError } from './errors.js';
 import { db } from './firebase.js';
+import { listCuratedLanguages } from './languageService.js';
 import { stampRateLimit } from './rateLimit.js';
 
 const OPS_PER_BATCH = 100;
@@ -58,7 +60,12 @@ const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
  */
 export async function importCourse(uid, data, onProgress = () => {}) {
   onProgress('Создаю курс…');
-  const courseId = await createCourse(uid, data.course);
+  const curated = await listCuratedLanguages();
+  const languageFields =
+    data.course.languageCategory === LANGUAGE_CATEGORY.CUSTOM
+      ? { language: data.course.language, languageCategory: LANGUAGE_CATEGORY.CUSTOM, languageId: null }
+      : languageFieldsForName(data.course.language, curated);
+  const courseId = await createCourse(uid, { ...data.course, ...languageFields });
   const courseRef = doc(db, COLLECTIONS.COURSES, courseId);
   const firstLessonId = (await getDoc(courseRef)).data().lessonOrder[0];
 

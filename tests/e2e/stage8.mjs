@@ -1,6 +1,6 @@
 // Этап 8: модерация — отправка (с подтверждением почты), отклонение с причиной,
 // повторная отправка, одобрение, правка опубликованного курса.
-import { BASE, assert, launch, newPage, register, setRole, uidOf, uniqueEmail, verifyEmail } from './lib.mjs';
+import { BASE, assert, launch, newPage, register, setRole, uidOf, uniqueEmail, verifyEmail, chooseLanguage } from './lib.mjs';
 
 const browser = await launch();
 try {
@@ -10,7 +10,7 @@ try {
   await author.goto(`${BASE}/my-courses`);
   await author.getByRole('button', { name: '+ Новый курс' }).click();
   await author.getByLabel('Название курса').fill('Лойбан: основы');
-  await author.getByLabel('Язык').fill('Лойбан');
+  await chooseLanguage(author, 'Лойбан');
   await author.getByRole('button', { name: 'Создать черновик' }).click();
   await author.waitForURL('**/courses/*/edit');
   const editorUrl = author.url();

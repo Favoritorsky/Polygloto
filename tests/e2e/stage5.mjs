@@ -1,5 +1,5 @@
 // Этап 5: редактор контента — форматирование, категории, таблица, сохранение в JSON.
-import { BASE, assert, launch, newPage, register, uniqueEmail } from './lib.mjs';
+import { BASE, assert, launch, newPage, register, uniqueEmail, chooseLanguage } from './lib.mjs';
 
 const browser = await launch();
 try {
@@ -8,7 +8,7 @@ try {
   await page.goto(`${BASE}/my-courses`);
   await page.getByRole('button', { name: '+ Новый курс' }).click();
   await page.getByLabel('Название курса').fill('Токипона: оформление');
-  await page.getByLabel('Язык').fill('Токипона');
+  await chooseLanguage(page, 'Токипона');
   await page.getByRole('button', { name: 'Создать черновик' }).click();
   await page.waitForURL('**/courses/*/edit');
   const courseUrl = page.url();

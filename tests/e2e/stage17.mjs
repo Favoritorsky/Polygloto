@@ -1,6 +1,6 @@
 // Доработки после запуска, задача 4: готовые наборы категорий, сокращения,
 // легенда-переключатель (скрыть/показать подсветку отдельной категории).
-import { BASE, assert, launch, newPage, register, uniqueEmail } from './lib.mjs';
+import { BASE, assert, launch, newPage, register, uniqueEmail, chooseLanguage } from './lib.mjs';
 
 const browser = await launch();
 try {
@@ -9,7 +9,7 @@ try {
   await page.goto(`${BASE}/my-courses`);
   await page.getByRole('button', { name: '+ Новый курс' }).click();
   await page.getByLabel('Название курса').fill('Разметка частей речи');
-  await page.getByLabel('Язык').fill('Испанский');
+  await chooseLanguage(page, 'Испанский');
   await page.getByRole('button', { name: 'Создать черновик' }).click();
   await page.waitForURL('**/courses/*/edit');
   const courseUrl = page.url();

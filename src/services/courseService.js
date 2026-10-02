@@ -17,11 +17,13 @@ import {
   writeBatch,
 } from 'firebase/firestore';
 import { defaultCategories } from '../../shared/categories.js';
+import { LANGUAGE_CATEGORY, languageFieldsNeedFix } from '../../shared/languages.js';
 import { sanitizeBlocks } from '../../shared/content.js';
 import { COLLECTIONS, CONTENT_SUBCOLLECTIONS, COURSE_STATUS, LIMITS, RATE_LIMITS, SUBCOLLECTIONS } from '../../shared/schema.js';
 import { db } from './firebase.js';
 import { deleteAllDocs } from './batchUtils.js';
 import { deleteCommentInBatch } from './commentService.js';
+import { listCuratedLanguages } from './languageService.js';
 import { stampRateLimit, withRateLimit } from './rateLimit.js';
 
 /** Вид раздела курса: уроки или справочник. */
@@ -54,7 +56,7 @@ export function validateCourseMeta({ title, language, description }) {
  * Создаёт черновик с первым уроком одной пакетной записью вместе с отметкой
  * rateLimits.createCourse: правила пропустят её не чаще раза в 30 с.
  */
-export async function createCourse(uid, { title, language, description = '' }) {
+export async function createCourse(uid, { title, language, languageCategory, languageId = null, description = '' }) {
   const ref = doc(collection(db, COLLECTIONS.COURSES));
   const lessonRef = doc(collection(ref, SUBCOLLECTIONS.LESSONS));
   const batch = writeBatch(db);
@@ -62,6 +64,9 @@ export async function createCourse(uid, { title, language, description = '' }) {
     authorId: uid,
     title: title.trim(),
     language: language.trim(),
+    // См. shared/languages.js: 'official' — язык из курируемого списка, 'custom' — свой.
+    languageCategory,
+    languageId: languageCategory === LANGUAGE_CATEGORY.OFFICIAL ? languageId : null,
     description: description.trim(),
     // Готовые наборы: части речи и фонетика; автор уберёт лишнее в настройках.
     categories: defaultCategories(),
@@ -142,7 +147,7 @@ export async function findUserByProfileRef(input) {
 /** Сохраняет метаданные курса (только в статусе draft — см. правила). */
 export function updateCourseMeta(courseId, patch) {
   const allowed = {};
-  for (const key of ['title', 'language', 'description', 'categories']) {
+  for (const key of ['title', 'language', 'languageCategory', 'languageId', 'description', 'categories']) {
     if (patch[key] !== undefined) allowed[key] = typeof patch[key] === 'string' ? patch[key].trim() : patch[key];
   }
   return updateDoc(courseRef(courseId), { ...allowed, updatedAt: serverTimestamp() });
@@ -153,8 +158,15 @@ export function returnToDraft(courseId) {
   return updateDoc(courseRef(courseId), { status: COURSE_STATUS.DRAFT, updatedAt: serverTimestamp() });
 }
 
-/** Отправка на модерацию. Правила требуют email_verified в токене. */
-export function submitForReview(courseId) {
+/**
+ * Отправка на модерацию. Правила требуют email_verified в токене и верный
+ * язык: если язык курса тем временем переименовали или убрали из списка,
+ * сначала поля языка приводятся к текущему списку (см. shared/languages.js).
+ */
+export async function submitForReview(courseId) {
+  const snap = await getDoc(courseRef(courseId));
+  const fix = snap.exists() ? languageFieldsNeedFix(snap.data(), await listCuratedLanguages()) : null;
+  if (fix) await updateCourseMeta(courseId, fix);
   return updateDoc(courseRef(courseId), {
     status: COURSE_STATUS.PENDING_REVIEW,
     submittedAt: serverTimestamp(),

@@ -89,7 +89,7 @@ try {
   await draft.set({
     authorId: uid,
     title: LONG,
-    language: 'Испанский',
+    language: 'Испанский', languageCategory: 'custom', languageId: null,
     description: LONG,
     categories: [],
     lessonOrder: ['l1'],

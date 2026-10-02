@@ -1,5 +1,5 @@
 // v2, этап 3: подстрочный разбор (interlinear gloss) в редакторе и у читателя.
-import { BASE, assert, launch, newPage, register, uniqueEmail } from './lib.mjs';
+import { BASE, assert, launch, newPage, register, uniqueEmail, chooseLanguage } from './lib.mjs';
 
 const browser = await launch();
 try {
@@ -8,7 +8,7 @@ try {
   await page.goto(`${BASE}/my-courses`);
   await page.getByRole('button', { name: '+ Новый курс' }).click();
   await page.getByLabel('Название курса').fill('Глоссы');
-  await page.getByLabel('Язык').fill('Испанский');
+  await chooseLanguage(page, 'Испанский');
   await page.getByRole('button', { name: 'Создать черновик' }).click();
   await page.waitForURL('**/courses/*/edit');
 

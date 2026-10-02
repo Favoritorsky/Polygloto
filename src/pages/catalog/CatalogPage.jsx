@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { LIMITS } from '../../../shared/schema.js';
+import { catalogLanguageFilter, CONLANGS_FILTER } from '../../../shared/languages.js';
+import { LIMITS, normalizeText } from '../../../shared/schema.js';
 import { CATALOG_SORTS, DEFAULT_SORT } from '../../catalog/catalogQuery.js';
 import CourseCard from '../../components/course/CourseCard.jsx';
 import Alert from '../../components/ui/Alert.jsx';
 import AsyncState from '../../components/ui/AsyncState.jsx';
 import Button from '../../components/ui/Button.jsx';
+import { useCuratedLanguages } from '../../hooks/useCuratedLanguages.js';
 import { useAsync } from '../../hooks/useSubscription.js';
 import { fetchCatalogPage, getCatalogLanguages } from '../../services/catalogService.js';
 import { toUserMessage } from '../../services/errors.js';
@@ -40,15 +42,24 @@ export default function CatalogPage() {
     setParams(next, { replace: true });
   }
 
-  const languages = useAsync(getCatalogLanguages, 'languages');
-  const page = useAsync(() => fetchCatalogPage({ search, language, sort }), JSON.stringify([search, language, sort]));
+  // Пункты фильтра: курируемые языки (с числом курсов из catalogMeta) и «Конланги».
+  const curated = useCuratedLanguages();
+  const counts = useAsync(getCatalogLanguages, 'languages');
+  const countFor = (name) => counts.data?.find((c) => c.key === normalizeText(name))?.count;
+  // Пока список языков грузится, id языка из адреса не с чем сверить — ждём его.
+  const waitingForLanguages = Boolean(language) && language !== CONLANGS_FILTER && curated.loading;
+  const languageFilter = catalogLanguageFilter(language, curated.data ?? [], normalizeText);
+  const page = useAsync(
+    () => fetchCatalogPage({ search, languageFilter, sort }),
+    waitingForLanguages ? null : JSON.stringify([search, languageFilter, sort]),
+  );
 
   async function loadMore() {
     if (moreLoading) return;
     setMoreLoading(true);
     setMoreError('');
     try {
-      const next = await fetchCatalogPage({ search, language, sort, cursor: page.data.cursor });
+      const next = await fetchCatalogPage({ search, languageFilter, sort, cursor: page.data.cursor });
       const seen = new Set(page.data.items.map((c) => c.id));
       page.setData({ ...next, items: [...page.data.items, ...next.items.filter((c) => !seen.has(c.id))] });
     } catch (err) {
@@ -79,15 +90,16 @@ export default function CatalogPage() {
         </label>
         <div className={styles.select}>
           <label htmlFor="catalog-language">Язык</label>
-          <select id="catalog-language" value={language} onChange={(e) => update({ lang: e.target.value })} disabled={languages.loading}>
+          <select id="catalog-language" value={language} onChange={(e) => update({ lang: e.target.value })} disabled={curated.loading}>
             <option value="">Все языки</option>
-            {/* Выбранный язык остаётся в списке, даже если его курсы сняли с публикации. */}
-            {language && !languages.data?.some((l) => l.key === language) && <option value={language}>{language}</option>}
-            {languages.data?.map((l) => (
-              <option key={l.key} value={l.key}>
-                {l.name} ({l.count})
+            {curated.data?.map((l) => (
+              <option key={l.id} value={l.id}>
+                {countFor(l.name) ? `${l.name} (${countFor(l.name)})` : l.name}
               </option>
             ))}
+            <option value={CONLANGS_FILTER}>Конланги</option>
+            {/* Старая ссылка с названием языка вместо id: пункт остаётся видимым. */}
+            {languageFilter?.field === 'languageLower' && <option value={language}>{language}</option>}
           </select>
         </div>
         <div className={styles.select}>
@@ -113,10 +125,10 @@ export default function CatalogPage() {
           </Button>
         )}
       </form>
-      {languages.error && <Alert tone="warning">Не удалось загрузить список языков: фильтр по языку недоступен.</Alert>}
+      {curated.error && <Alert tone="warning">Не удалось загрузить список языков: фильтр по языку недоступен.</Alert>}
 
       <AsyncState
-        loading={page.loading}
+        loading={page.loading || waitingForLanguages}
         error={page.error}
         onRetry={page.retry}
         loadingLabel="Ищем курсы…"

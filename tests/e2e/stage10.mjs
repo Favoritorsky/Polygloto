@@ -13,12 +13,18 @@ const tag = `q${Date.now().toString(36)}`;
 const langMain = `Сканийский ${tag}`;
 const langOther = `Нэрийский ${tag}`;
 
+// Курируемые языки (их ведёт админ); курс со своим языком — languageCategory 'custom'.
+const langIds = { [langMain]: `${tag}main`, [langOther]: `${tag}other` };
+for (const [name, id] of Object.entries(langIds)) await db.collection('curatedLanguages').doc(id).set({ name });
+
 async function publish(title, language, { likes = 0, dislikes = 0, daysAgo = 0 } = {}) {
+  const languageId = langIds[language] ?? null;
   const ref = db.collection('publicCourses').doc();
   await ref.set({
     authorId: 'seed', authorName: 'Сид', title, language, description: "Короткое описание.",
     categories: [], lessonOrder: [], referenceOrder: [], toc: { lessons: [], reference: [] },
     titleLower: normalizeText(title), languageLower: normalizeText(language),
+    languageCategory: languageId ? 'official' : 'custom', languageId,
     searchKeywords: buildSearchKeywords(title, language),
     likesCount: likes, dislikesCount: dislikes, score: likes - dislikes,
     lessonsCount: 1, wordsCount: 0,
@@ -30,7 +36,9 @@ async function publish(title, language, { likes = 0, dislikes = 0, daysAgo = 0 }
 await publish(`Грамматика ${tag} для начинающих`, langMain, { likes: 5, dislikes: 1, daysAgo: 3 });
 await publish(`Фонетика ${tag}`, langMain, { likes: 9, dislikes: 8, daysAgo: 1 });
 await publish(`Разговорник ${tag}`, langOther, { likes: 2, dislikes: 0, daysAgo: 0 });
-// Для пагинации: 13 курсов ещё одного языка.
+const langConlang = `Квенья ${tag}`;
+await publish(`Эльфийский ${tag}`, langConlang, { likes: 1 });
+// Для пагинации: 13 курсов ещё одного языка (не из списка — проверяем и старую ссылку ?lang=название).
 const langMany = `Многоязык ${tag}`;
 for (let i = 0; i < 13; i += 1) await publish(`Урок ${tag} номер ${i + 1}`, langMany, { likes: i });
 // Список языков при одобрении ведёт админка (moderationService.approveCourse); здесь курсы
@@ -82,6 +90,19 @@ try {
   await page.getByText(`Фонетика ${tag}`).waitFor();
   list = await titles(page);
   assert(list.length === 2 && list[0].startsWith('Грамматика'), `фильтр по языку, по рейтингу: ${list.join(', ')}`);
+
+  // «Конланги»: только курсы со своим языком, без языков из списка (поиск по метке — чтобы не мешали курсы других сценариев).
+  await langSelect.selectOption({ label: 'Конланги' });
+  await page.waitForURL(/lang=conlangs/);
+  await page.getByPlaceholder('Поиск по названию или языку').fill(`Эльф ${tag}`);
+  await page.getByText(`Эльфийский ${tag}`).waitFor();
+  list = await titles(page);
+  assert(!list.some((t) => t.startsWith('Грамматика') || t.startsWith('Фонетика') || t.startsWith('Разговорник')), 'в «Конлангах» нет курсов на языках из списка');
+  await page.getByRole('button', { name: 'Сбросить' }).click();
+  await page.waitForURL((u) => !u.search.includes('lang=') && !u.search.includes('q='));
+  await langSelect.selectOption({ label: `${langMain} (2)` });
+  await page.getByText(`Фонетика ${tag}`).waitFor();
+  assert((await page.getByText(`Эльфийский ${tag}`).count()) === 0, 'курс со своим языком не виден в фильтре по языку из списка');
 
   await page.getByLabel('Сортировка').selectOption('likes');
   await page.waitForURL(/sort=likes/);

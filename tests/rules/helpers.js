@@ -46,6 +46,8 @@ export function course(overrides = {}) {
     authorId: 'alice',
     title: 'Токипона за 10 уроков',
     language: 'Токипона',
+    languageCategory: 'custom',
+    languageId: null,
     description: '',
     categories: [],
     lessonOrder: ['l1'],

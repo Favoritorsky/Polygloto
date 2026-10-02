@@ -13,7 +13,7 @@ export const adminDb = getFirestore(getApps()[0] ?? initializeApp({ projectId: '
 export async function seedPublishedCourse({ title, language = 'Испанский', authorId = 'seed', authorName = 'Сид', lessons = [], reference = [], dictionary = [], categories = [], extra = {} }) {
   const ref = adminDb.collection('publicCourses').doc();
   await ref.set({
-    authorId, authorName, title, language, description: 'Курс для проверки.',
+    authorId, authorName, title, language, languageCategory: 'custom', languageId: null, description: 'Курс для проверки.',
     categories, lessonOrder: lessons.map((l) => l.id), referenceOrder: reference.map((r) => r.id),
     toc: { lessons: lessons.map(({ id, title: t }) => ({ id, title: t })), reference: reference.map(({ id, title: t }) => ({ id, title: t })) },
     titleLower: normalizeText(title), languageLower: normalizeText(language), searchKeywords: buildSearchKeywords(title, language),

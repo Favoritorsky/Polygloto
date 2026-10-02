@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import Tabs from '../../components/ui/Tabs.jsx';
 import AllCoursesTab from './AllCoursesTab.jsx';
+import LanguagesTab from './LanguagesTab.jsx';
 import ReviewQueueTab from './ReviewQueueTab.jsx';
 import UsersTab from './UsersTab.jsx';
 
@@ -8,6 +9,7 @@ const TABS = [
   { id: 'queue', label: 'Очередь модерации' },
   { id: 'courses', label: 'Все курсы' },
   { id: 'users', label: 'Пользователи' },
+  { id: 'languages', label: 'Языки' },
 ];
 
 export default function AdminPage() {
@@ -19,6 +21,7 @@ export default function AdminPage() {
       {tab === 'queue' && <ReviewQueueTab />}
       {tab === 'courses' && <AllCoursesTab />}
       {tab === 'users' && <UsersTab />}
+      {tab === 'languages' && <LanguagesTab />}
     </div>
   );
 }

@@ -1,12 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { languageChoiceForCourse, languageFieldsFromChoice } from '../../../shared/languages.js';
 import { LIMITS } from '../../../shared/schema.js';
 import CategoryEditor from '../../components/course/CategoryEditor.jsx';
 import Alert from '../../components/ui/Alert.jsx';
 import Button from '../../components/ui/Button.jsx';
 import Field from '../../components/ui/Field.jsx';
+import LanguagePicker from '../../components/course/LanguagePicker.jsx';
 import SaveIndicator from '../../components/ui/SaveIndicator.jsx';
 import { useAutosave } from '../../hooks/useAutosave.js';
+import { useCuratedLanguages } from '../../hooks/useCuratedLanguages.js';
 import { deleteCourse, updateCourseMeta, validateCourseMeta } from '../../services/courseService.js';
 import { exportCourse } from '../../services/courseTransferService.js';
 import { toUserMessage } from '../../services/errors.js';
@@ -21,11 +24,15 @@ export default function SettingsTab() {
   // Локальная копия: входящие снимки не перетирают то, что сейчас печатается.
   const [form, setForm] = useState(() => ({
     title: course.title,
-    language: course.language,
+    // Выбор языка появляется, когда загрузится курируемый список (до этого язык не сохраняется).
+    languageChoice: null,
     description: course.description ?? '',
     categories: course.categories ?? [],
   }));
   const [errors, setErrors] = useState({});
+  const languages = useCuratedLanguages();
+  // Пока автор не трогал язык, выбор берётся из курса (когда загрузится список).
+  const languageChoice = form.languageChoice ?? (languages.data ? languageChoiceForCourse(course, languages.data) : null);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState('');
 
@@ -43,14 +50,19 @@ export default function SettingsTab() {
   function change(patch) {
     const next = { ...form, ...patch };
     setForm(next);
-    const nextErrors = validateCourseMeta(next);
+    const { languageChoice: touched, ...rest } = next;
+    const choice = touched ?? languageChoice;
+    const fields = choice ? languageFieldsFromChoice(choice, languages.data ?? []) : null;
+    const nextErrors = validateCourseMeta({ ...rest, language: fields ? fields.language : course.language });
+    if (choice && !fields) nextErrors.language = 'Выберите язык из списка или пункт «Другой язык».';
     const badCategory = next.categories.some((c) => !c.name.trim());
     if (badCategory) nextErrors.categories = 'У каждой категории должно быть название.';
     setErrors(nextErrors);
     // Невалидное не сохраняем: правила всё равно отклонят запись.
     if (Object.keys(nextErrors).length === 0) {
       autosave.schedule({
-        ...next,
+        ...rest,
+        ...fields,
         categories: next.categories.map(({ abbr, ...c }) => ({ ...c, name: c.name.trim(), ...(abbr?.trim() && { abbr: abbr.trim() }) })),
       });
     }
@@ -111,17 +123,19 @@ export default function SettingsTab() {
             />
           )}
         </Field>
-        <Field label="Язык" error={errors.language} hint="По этому полю курс находят в каталоге.">
-          {(p) => (
-            <input
-              {...p}
-              value={form.language}
-              maxLength={LIMITS.COURSE_LANGUAGE_MAX}
-              readOnly={readOnly}
-              onChange={(e) => change({ language: e.target.value })}
-            />
-          )}
-        </Field>
+        {languages.error && <Alert tone="error">Не удалось загрузить список языков: язык сейчас изменить нельзя.</Alert>}
+        {languageChoice ? (
+          <LanguagePicker
+            value={languageChoice}
+            onChange={(languageChoice) => change({ languageChoice })}
+            languages={languages.data ?? []}
+            error={errors.language}
+            hint="По этому полю курс находят в каталоге."
+            readOnly={readOnly}
+          />
+        ) : (
+          <Field label="Язык">{(p) => <input {...p} value={course.language} readOnly />}</Field>
+        )}
         <Field label="Описание" error={errors.description}>
           {(p) => (
             <textarea
