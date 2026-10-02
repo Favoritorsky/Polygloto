@@ -9,7 +9,7 @@ import AsyncState from '../../components/ui/AsyncState.jsx';
 import Button from '../../components/ui/Button.jsx';
 import { useCuratedLanguages } from '../../hooks/useCuratedLanguages.js';
 import { useAsync } from '../../hooks/useSubscription.js';
-import { fetchCatalogPage, getCatalogLanguages } from '../../services/catalogService.js';
+import { fetchCatalogPage } from '../../services/catalogService.js';
 import { toUserMessage } from '../../services/errors.js';
 import styles from './CatalogPage.module.css';
 
@@ -42,10 +42,8 @@ export default function CatalogPage() {
     setParams(next, { replace: true });
   }
 
-  // Пункты фильтра: курируемые языки (с числом курсов из catalogMeta) и «Конланги».
+  // Пункты фильтра: курируемые языки и «Конланги».
   const curated = useCuratedLanguages();
-  const counts = useAsync(getCatalogLanguages, 'languages');
-  const countFor = (name) => counts.data?.find((c) => c.key === normalizeText(name))?.count;
   // Пока список языков грузится, id языка из адреса не с чем сверить — ждём его.
   const waitingForLanguages = Boolean(language) && language !== CONLANGS_FILTER && curated.loading;
   const languageFilter = catalogLanguageFilter(language, curated.data ?? [], normalizeText);
@@ -94,7 +92,7 @@ export default function CatalogPage() {
             <option value="">Все языки</option>
             {curated.data?.map((l) => (
               <option key={l.id} value={l.id}>
-                {countFor(l.name) ? `${l.name} (${countFor(l.name)})` : l.name}
+                {l.name}
               </option>
             ))}
             <option value={CONLANGS_FILTER}>Конланги</option>

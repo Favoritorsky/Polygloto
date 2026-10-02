@@ -86,7 +86,7 @@ try {
     await page.waitForTimeout(500);
     await page.reload();
   }
-  await langSelect.selectOption({ label: `${langMain} (2)` });
+  await langSelect.selectOption({ label: langMain });
   await page.getByText(`Фонетика ${tag}`).waitFor();
   list = await titles(page);
   assert(list.length === 2 && list[0].startsWith('Грамматика'), `фильтр по языку, по рейтингу: ${list.join(', ')}`);
@@ -100,7 +100,7 @@ try {
   assert(!list.some((t) => t.startsWith('Грамматика') || t.startsWith('Фонетика') || t.startsWith('Разговорник')), 'в «Конлангах» нет курсов на языках из списка');
   await page.getByRole('button', { name: 'Сбросить' }).click();
   await page.waitForURL((u) => !u.search.includes('lang=') && !u.search.includes('q='));
-  await langSelect.selectOption({ label: `${langMain} (2)` });
+  await langSelect.selectOption({ label: langMain });
   await page.getByText(`Фонетика ${tag}`).waitFor();
   assert((await page.getByText(`Эльфийский ${tag}`).count()) === 0, 'курс со своим языком не виден в фильтре по языку из списка');
 
