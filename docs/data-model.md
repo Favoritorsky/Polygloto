@@ -239,6 +239,7 @@ request.time`, обновлять нельзя). Кнопка «Урок про�
 | `partOfSpeech` | одно из `PART_OF_SPEECH_IDS` | Часть речи |
 | `examples` | array ≤10 of string ≤300 | Примеры употребления |
 | `notes` | string ≤1000 | Заметки |
+| `pronunciation` | string ≤200, необязательно | Произношение текстом: транскрипция или запись буквами |
 | `audio` | AudioRef \| null, необязательно (v2) | Произношение; правила проверяют вид ссылки, id файла и хост |
 | `createdAt`, `updatedAt` | timestamp | |
 

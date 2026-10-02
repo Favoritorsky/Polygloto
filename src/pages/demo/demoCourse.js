@@ -34,7 +34,7 @@ export const DEMO_COURSE = {
 export const DEMO_CATEGORIES = defaultCategories();
 
 export const DEMO_DICTIONARY = [
-  { id: 'hola', word: 'hola', translation: 'привет', partOfSpeech: 'interjection', examples: ['¡Hola, Ana! — Привет, Анна!'], notes: 'Буква h в испанском не читается: [óла].' },
+  { id: 'hola', word: 'hola', translation: 'привет', partOfSpeech: 'interjection', examples: ['¡Hola, Ana! — Привет, Анна!'], pronunciation: '[óла]', notes: 'Буква h в испанском не читается: [óла].' },
   { id: 'adios', word: 'adiós', translation: 'до свидания', partOfSpeech: 'interjection', examples: ['Adiós, Pablo. — До свидания, Пабло.'], notes: '' },
   { id: 'gracias', word: 'gracias', translation: 'спасибо', partOfSpeech: 'interjection', examples: ['Muchas gracias. — Большое спасибо.'], notes: '' },
   { id: 'mucho-gusto', word: 'mucho gusto', translation: 'очень приятно', partOfSpeech: 'phrase', examples: ['Me llamo Pablo. Mucho gusto. — Меня зовут Пабло. Очень приятно.'], notes: '' },

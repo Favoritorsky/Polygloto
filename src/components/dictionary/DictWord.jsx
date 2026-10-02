@@ -48,7 +48,9 @@ export default function DictWord({ entries, className, style, title, children })
           {entries.map((entry) => (
             <span key={entry.id} className={styles.entry}>
               <span className={styles.head}>
-                <strong>{entry.word}</strong> <em>{POS_LABELS[entry.partOfSpeech]}</em>
+                <strong>{entry.word}</strong>
+                {entry.pronunciation && <span className={styles.pronunciation}>{entry.pronunciation}</span>}{' '}
+                <em>{POS_LABELS[entry.partOfSpeech]}</em>
                 {entry.audio && (
                   // Клик по плееру не должен закреплять/снимать подсказку.
                   <span onClick={(e) => e.stopPropagation()} onKeyDown={(e) => e.stopPropagation()} role="presentation">

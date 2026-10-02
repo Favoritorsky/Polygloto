@@ -54,6 +54,6 @@ describe('урок-превью французской фонетики', () => 
 
   it('у слов словаря уникальные id и есть транскрипция', () => {
     expect(new Set(FRENCH_DICTIONARY.map((e) => e.id)).size).toBe(FRENCH_DICTIONARY.length);
-    for (const e of FRENCH_DICTIONARY) expect(e.notes).toMatch(/\[.+\]/);
+    for (const e of FRENCH_DICTIONARY) expect(e.pronunciation).toMatch(/^\[.+\]$/);
   });
 });

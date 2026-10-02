@@ -81,3 +81,7 @@
   font-size: 0.9rem;
   color: var(--color-text-muted);
 }
+
+.pronunciation {
+  color: var(--color-text-muted);
+}

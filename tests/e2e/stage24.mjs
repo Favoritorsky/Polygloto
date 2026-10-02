@@ -1,4 +1,6 @@
 // v2, этап 3: аудиовставка в тексте урока и произношение в карточке словаря.
+import { sanitizeWord } from '../../shared/content.js';
+import { PART_OF_SPEECH_IDS } from '../../shared/schema.js';
 import { writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -39,7 +41,8 @@ try {
   await page.getByRole('tab', { name: 'Словарь' }).click();
   await page.getByLabel('Слово', { exact: true }).fill('hola');
   await page.getByLabel('Перевод').fill('привет');
-  const pron = page.getByRole('group', { name: 'Произношение (необязательно)' });
+  await page.getByLabel('Произношение (необязательно)').fill('[ˈo.la]');
+  const pron = page.getByRole('group', { name: 'Запись произношения (необязательно)' });
   await pron.getByLabel('Аудиофайл').setInputFiles(wavFile);
   await pron.getByText('файл курса').waitFor();
   await page.getByRole('button', { name: 'Добавить', exact: true }).click();
@@ -51,6 +54,8 @@ try {
   assert((await entry.locator('audio').getAttribute('src')).startsWith('data:audio/wav'), 'произношение играет из файла курса');
   const words = await adminDb.collection(`courses/${courseId}/dictionary`).get();
   assert(words.docs[0].data().audio?.kind === 'file', 'в базе у слова ссылка на файл');
+  assert(words.docs[0].data().pronunciation === '[ˈo.la]', 'в базе у слова произношение текстом');
+  assert(await entry.getByText('[ˈo.la]').isVisible(), 'произношение текстом видно в словаре');
 
   // Аудиоблок в уроке со ссылкой на Викисклад
   await page.getByRole('tab', { name: 'Самоучитель' }).click();
@@ -84,6 +89,11 @@ try {
   await tip.getByRole('button', { name: 'Произношение: hola' }).click();
   await tip.locator('audio').waitFor();
   assert((await tip.count()) === 1, 'в подсказке слова играет произношение, подсказка остаётся открытой');
+  assert(await tip.getByText('[ˈo.la]').isVisible(), 'в подсказке слова видно произношение текстом');
+
+  // После публикации произношение попадает к читателям (снимок курса проходит sanitizeWord).
+  const published = sanitizeWord(words.docs[0].data(), PART_OF_SPEECH_IDS);
+  assert(published.pronunciation === '[ˈo.la]', 'произношение сохраняется при публикации');
 } finally {
   await browser.close();
 }

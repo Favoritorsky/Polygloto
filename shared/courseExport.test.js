@@ -23,7 +23,7 @@ const lessons = [
     ],
   },
 ];
-const dictionary = [{ id: 'w1', word: 'hola', translation: 'привет', partOfSpeech: 'interjection', examples: [], notes: '', createdAt: 1 }];
+const dictionary = [{ id: 'w1', word: 'hola', translation: 'привет', partOfSpeech: 'interjection', examples: [], notes: '', pronunciation: '[ˈo.la]', createdAt: 1 }];
 const audio = [
   { id: 'a1', dataUrl: AUDIO, name: 'hola.ogg' },
   { id: 'unused', dataUrl: AUDIO, name: 'x.ogg' },
@@ -43,6 +43,7 @@ describe('экспорт', () => {
       partOfSpeech: 'interjection',
       examples: [],
       notes: '',
+      pronunciation: '[ˈo.la]',
     });
   });
   it('только используемые аудиофайлы', () => {

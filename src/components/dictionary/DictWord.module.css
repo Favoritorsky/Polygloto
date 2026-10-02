@@ -62,3 +62,8 @@
   top: -8px;
   height: 8px;
 }
+
+.pronunciation {
+  margin-left: 0.35rem;
+  opacity: 0.85;
+}

@@ -48,6 +48,15 @@ describe('dictionary (рабочая версия)', () => {
     await assertSucceeds(deleteDoc(doc(db, 'courses/c1/dictionary/w1')));
   });
 
+  it('произношение текстом: необязательное, до 200 символов', async () => {
+    const db = as(env, 'alice');
+    await assertSucceeds(setDoc(doc(db, 'courses/c1/dictionary/p1'), word({ pronunciation: '[pɔ.na]' })));
+    await assertSucceeds(setDoc(doc(db, 'courses/c1/dictionary/p2'), word({ pronunciation: '' })));
+    await assertFails(setDoc(doc(db, 'courses/c1/dictionary/p3'), word({ pronunciation: 'a'.repeat(201) })));
+    await assertFails(setDoc(doc(db, 'courses/c1/dictionary/p4'), word({ pronunciation: 42 })));
+    await assertSucceeds(updateDoc(doc(db, 'courses/c1/dictionary/w1'), { pronunciation: '[i.u.ra]', updatedAt: serverTimestamp() }));
+  });
+
   it('посторонний не читает и не пишет словарь черновика', async () => {
     await assertFails(getDoc(doc(as(env, 'bob'), 'courses/c1/dictionary/w1')));
     await assertFails(getDoc(doc(anon(env), 'courses/c1/dictionary/w1')));

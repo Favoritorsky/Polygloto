@@ -8,7 +8,7 @@ import { validateWord } from '../../services/dictionaryService.js';
 import { toUserMessage } from '../../services/errors.js';
 import styles from './WordForm.module.css';
 
-const EMPTY = { word: '', translation: '', partOfSpeech: 'noun', examples: [''], notes: '', audio: null };
+const EMPTY = { word: '', translation: '', partOfSpeech: 'noun', examples: [''], notes: '', pronunciation: '', audio: null };
 
 /** Форма статьи словаря (добавление и правка). onSubmit(value) → Promise. */
 export default function WordForm({ initial, onSubmit, onCancel, submitLabel = 'Добавить' }) {
@@ -98,7 +98,14 @@ export default function WordForm({ initial, onSubmit, onCancel, submitLabel = '�
           </Button>
         )}
       </fieldset>
-      <AudioRefEditor value={form.audio} onChange={(audio) => setForm((f) => ({ ...f, audio }))} label="Произношение (необязательно)" />
+      <Field label="Произношение (необязательно)" error={errors.pronunciation} hint="Транскрипция или запись буквами: [bɔ̃ʒuʁ], «бонжур»">
+        {(p) => <input {...p} value={form.pronunciation} maxLength={LIMITS.WORD_PRONUNCIATION_MAX} onChange={update('pronunciation')} />}
+      </Field>
+      <AudioRefEditor
+        value={form.audio}
+        onChange={(audio) => setForm((f) => ({ ...f, audio }))}
+        label="Запись произношения (необязательно)"
+      />
       <Field label="Заметки" error={errors.notes}>
         {(p) => <textarea {...p} rows={2} value={form.notes} maxLength={LIMITS.WORD_NOTES_MAX} onChange={update('notes')} />}
       </Field>

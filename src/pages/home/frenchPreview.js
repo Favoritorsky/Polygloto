@@ -37,7 +37,8 @@ const entry = (word, translation, partOfSpeech, ipa) => ({
   translation,
   partOfSpeech,
   examples: [],
-  notes: `Произношение: [${ipa}]`,
+  notes: '',
+  pronunciation: `[${ipa}]`,
 });
 
 export const FRENCH_DICTIONARY = [

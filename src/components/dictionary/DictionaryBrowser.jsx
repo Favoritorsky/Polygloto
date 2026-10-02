@@ -59,6 +59,7 @@ export default function DictionaryBrowser({ entries, renderActions, highlightId 
             <li key={entry.id} id={`word-${entry.id}`} className={entry.id === highlightId ? `${styles.entry} ${styles.highlight}` : styles.entry}>
               <div className={styles.head}>
                 <span className={styles.word}>{entry.word}</span>
+                {entry.pronunciation && <span className={styles.pronunciation}>{entry.pronunciation}</span>}
                 <span className={styles.pos}>{POS_LABELS[entry.partOfSpeech] ?? entry.partOfSpeech}</span>
                 <span className={styles.translation}>{entry.translation}</span>
                 {entry.audio && <AudioPlayer audio={entry.audio} label={`Произношение: ${entry.word}`} compact />}

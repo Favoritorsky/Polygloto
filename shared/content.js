@@ -176,6 +176,9 @@ export function sanitizeWord(word, partOfSpeechIds) {
       .slice(0, LIMITS.WORD_EXAMPLES_MAX),
     notes: cleanString(word.notes, LIMITS.WORD_NOTES_MAX).trim(),
   };
+  // Произношение текстом (транскрипция или запись буквами родного языка): поле есть только у слов, где оно заполнено.
+  const pronunciation = cleanString(word.pronunciation, LIMITS.WORD_PRONUNCIATION_MAX).trim();
+  if (pronunciation) clean.pronunciation = pronunciation;
   // Произношение (v2): ссылка на аудио, поле есть только у слов с записью.
   const audio = sanitizeAudioRef(word.audio);
   if (audio) clean.audio = audio;

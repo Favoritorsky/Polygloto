@@ -50,6 +50,9 @@ describe('sanitizeBlocks', () => {
   });
 
   it('произношение слова: только допустимая ссылка', () => {
+    expect(sanitizeWord({ word: 'hola', translation: 'привет', pronunciation: '  [ˈo.la]  ' }, ['other']).pronunciation).toBe('[ˈo.la]');
+    expect('pronunciation' in sanitizeWord({ word: 'hola', translation: 'привет', pronunciation: '   ' }, ['other'])).toBe(false);
+    expect(sanitizeWord({ word: 'hola', translation: 'привет', pronunciation: 'x'.repeat(500) }, ['other']).pronunciation).toHaveLength(200);
     expect(sanitizeWord({ word: 'hola', translation: 'привет', audio: { kind: 'file', id: 'a1' } }, ['other']).audio).toEqual({
       kind: 'file',
       id: 'a1',

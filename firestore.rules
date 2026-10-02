@@ -563,7 +563,7 @@ service cloud.firestore {
       // Словарь курса. partOfSpeech — из PART_OF_SPEECH_IDS (shared/schema.js).
       function validWord(d) {
         return d.keys().hasOnly(['word', 'wordLower', 'translation', 'partOfSpeech',
-                                 'examples', 'notes', 'audio', 'createdAt', 'updatedAt'])
+                                 'examples', 'notes', 'pronunciation', 'audio', 'createdAt', 'updatedAt'])
           && validAudioRef(d.get('audio', null))
           && isStringOfLength(d.word, 1, 100)
           && isStringOfLength(d.wordLower, 1, 100)
@@ -572,6 +572,7 @@ service cloud.firestore {
                                 'preposition', 'conjunction', 'particle', 'interjection', 'phrase', 'other']
           && d.examples is list && d.examples.size() <= 10
           && isStringOfLength(d.notes, 0, 1000)
+          && isStringOfLength(d.get('pronunciation', ''), 0, 200)
           && d.updatedAt == request.time;
       }
 

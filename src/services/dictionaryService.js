@@ -27,7 +27,7 @@ export function subscribeToDictionary(courseId, { published = false } = {}, onDa
 }
 
 /** Клиентская валидация (дублирует firestore.rules). */
-export function validateWord({ word, translation, partOfSpeech, examples, notes }) {
+export function validateWord({ word, translation, partOfSpeech, examples, notes, pronunciation = '' }) {
   const errors = {};
   if (!word.trim() || word.trim().length > LIMITS.WORD_MAX) errors.word = `Слово: от 1 до ${LIMITS.WORD_MAX} символов.`;
   if (!translation.trim() || translation.trim().length > LIMITS.TRANSLATION_MAX) {
@@ -39,11 +39,14 @@ export function validateWord({ word, translation, partOfSpeech, examples, notes 
   if (cleanExamples.some((e) => e.length > LIMITS.WORD_EXAMPLE_MAX)) {
     errors.examples = `Пример: не больше ${LIMITS.WORD_EXAMPLE_MAX} символов.`;
   }
+  if (pronunciation.trim().length > LIMITS.WORD_PRONUNCIATION_MAX) {
+    errors.pronunciation = `Произношение: не больше ${LIMITS.WORD_PRONUNCIATION_MAX} символов.`;
+  }
   if (notes.length > LIMITS.WORD_NOTES_MAX) errors.notes = `Заметки: не больше ${LIMITS.WORD_NOTES_MAX} символов.`;
   return errors;
 }
 
-function toDoc({ word, translation, partOfSpeech, examples, notes, audio }) {
+function toDoc({ word, translation, partOfSpeech, examples, notes, pronunciation = '', audio }) {
   return {
     audio: sanitizeAudioRef(audio),
     word: word.trim(),
@@ -52,6 +55,7 @@ function toDoc({ word, translation, partOfSpeech, examples, notes, audio }) {
     partOfSpeech,
     examples: examples.map((e) => e.trim()).filter(Boolean),
     notes: notes.trim(),
+    pronunciation: pronunciation.trim(),
     updatedAt: serverTimestamp(),
   };
 }
