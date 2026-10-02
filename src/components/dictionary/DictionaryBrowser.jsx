@@ -3,6 +3,8 @@ import { useMemo, useState } from 'react';
 import { PARTS_OF_SPEECH } from '../../../shared/schema.js';
 import { filterDictionary } from '../../content/dictionaryIndex.js';
 import { POS_LABELS } from './partsOfSpeech.js';
+import tile from '../ui/CardLink.module.css';
+import WordDetails from './WordDetails.jsx';
 import styles from './DictionaryBrowser.module.css';
 
 const SORTS = [
@@ -14,12 +16,16 @@ const SORTS = [
 
 /**
  * Поиск, фильтр по части речи и сортировка словаря.
- * renderActions(entry) — кнопки справа (для автора), необязательно.
+ * Клик по карточке открывает полную статью в отдельном окне (WordDetails).
+ * renderActions(entry) — кнопки справа и в окне статьи (для автора), необязательно.
  */
 export default function DictionaryBrowser({ entries, renderActions, highlightId }) {
   const [search, setSearch] = useState('');
   const [partOfSpeech, setPartOfSpeech] = useState('all');
   const [sort, setSort] = useState('word-asc');
+  // Храним id, а не объект: после правки в окне видна свежая версия, после удаления окно закрывается.
+  const [openId, setOpenId] = useState(null);
+  const opened = openId ? (entries.find((e) => e.id === openId) ?? null) : null;
   const visible = useMemo(() => filterDictionary(entries, { search, partOfSpeech, sort }), [entries, search, partOfSpeech, sort]);
 
   return (
@@ -56,27 +62,46 @@ export default function DictionaryBrowser({ entries, renderActions, highlightId 
       ) : (
         <ul className={styles.list}>
           {visible.map((entry) => (
-            <li key={entry.id} id={`word-${entry.id}`} className={entry.id === highlightId ? `${styles.entry} ${styles.highlight}` : styles.entry}>
-              <div className={styles.head}>
-                <span className={styles.word}>{entry.word}</span>
-                {entry.pronunciation && <span className={styles.pronunciation}>{entry.pronunciation}</span>}
-                <span className={styles.pos}>{POS_LABELS[entry.partOfSpeech] ?? entry.partOfSpeech}</span>
-                <span className={styles.translation}>{entry.translation}</span>
-                {entry.audio && <AudioPlayer audio={entry.audio} label={`Произношение: ${entry.word}`} compact />}
-                {renderActions && <span className={styles.actions}>{renderActions(entry)}</span>}
+            <li
+              key={entry.id}
+              id={`word-${entry.id}`}
+              className={[styles.entry, tile.tile, entry.id === highlightId && styles.highlight].filter(Boolean).join(' ')}
+            >
+              <div className={styles.main}>
+                <div className={styles.head}>
+                  <button
+                    type="button"
+                    className={`${styles.word} ${tile.stretched}`}
+                    onClick={() => setOpenId(entry.id)}
+                    aria-haspopup="dialog"
+                    title="Открыть статью целиком"
+                  >
+                    {entry.word}
+                  </button>
+                  {entry.pronunciation && <span className={styles.pronunciation}>{entry.pronunciation}</span>}
+                  {entry.audio && (
+                    <span className={`${styles.audio} ${tile.above}`}>
+                      <AudioPlayer audio={entry.audio} label={`Произношение: ${entry.word}`} compact />
+                    </span>
+                  )}
+                </div>
+                <p className={styles.translation}>{entry.translation}</p>
+                {entry.examples?.[0] && (
+                  <p className={styles.example}>
+                    {entry.examples[0]}
+                    {entry.examples.length > 1 && <span className={styles.more}> · ещё {entry.examples.length - 1}</span>}
+                  </p>
+                )}
               </div>
-              {entry.examples?.length > 0 && (
-                <ul className={styles.examples}>
-                  {entry.examples.map((example, i) => (
-                    <li key={i}>{example}</li>
-                  ))}
-                </ul>
-              )}
-              {entry.notes && <p className={styles.notes}>{entry.notes}</p>}
+              <div className={styles.side}>
+                <span className={styles.pos}>{POS_LABELS[entry.partOfSpeech] ?? entry.partOfSpeech}</span>
+                {renderActions && <span className={`${styles.actions} ${tile.above}`}>{renderActions(entry)}</span>}
+              </div>
             </li>
           ))}
         </ul>
       )}
+      <WordDetails entry={opened} onClose={() => setOpenId(null)} renderActions={renderActions} />
     </div>
   );
 }

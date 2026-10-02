@@ -30,10 +30,13 @@
 }
 
 .entry {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 0.65rem 1rem;
+  padding: 0.85rem 1.1rem;
 }
 
 .highlight {
@@ -41,27 +44,71 @@
   box-shadow: 0 0 0 2px var(--color-primary);
 }
 
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
 .head {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
-  gap: 0.5rem 0.9rem;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
 }
 
 .word {
+  padding: 0;
+  border: none;
+  background: none;
+  font: inherit;
   font-weight: 700;
-  font-size: 1.1rem;
+  font-size: 1.15rem;
   font-family: var(--font-display);
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
 }
 
-.pos {
-  font-size: 0.8rem;
+.pronunciation {
   color: var(--color-text-muted);
-  font-style: italic;
 }
 
 .translation {
-  flex: 1;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.example {
+  margin: 0.15rem 0 0;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.more {
+  white-space: nowrap;
+}
+
+.side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.pos {
+  padding: 0.1rem 0.55rem;
+  border-radius: 999px;
+  background: var(--color-surface-muted);
+  font-size: 0.78rem;
+  color: var(--color-text-muted);
+  white-space: nowrap;
 }
 
 .actions {
@@ -69,19 +116,21 @@
   gap: 0.25rem;
 }
 
-.examples {
-  margin: 0.35rem 0 0;
-  padding-left: 1.25rem;
-  color: var(--color-text-muted);
-  font-size: 0.925rem;
+@media (max-width: 560px) {
+  .entry {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .side {
+    flex-direction: row;
+    align-items: center;
+    flex-basis: 100%;
+    justify-content: space-between;
+  }
 }
 
-.notes {
-  margin: 0.35rem 0 0;
-  font-size: 0.9rem;
-  color: var(--color-text-muted);
-}
-
-.pronunciation {
-  color: var(--color-text-muted);
+/* Плеер в карточке: обёртка сжимается по содержимому, поэтому ширину задаём явно. */
+.audio audio {
+  width: min(14rem, 60vw);
 }
