@@ -1,9 +1,11 @@
+import { useEffect } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import Avatar from '../profile/Avatar.jsx';
 import ThemeToggle from './ThemeToggle.jsx';
 import Button from '../ui/Button.jsx';
 import { useAuth } from '../../hooks/useAuth.js';
 import { useDueCount } from '../../hooks/useDueCount.js';
+import { useReviewQueueCount } from '../../hooks/useReviewQueueCount.js';
 import { useNow, useUserStats } from '../../hooks/useMyStats.js';
 import { currentStreak } from '../../../shared/gamification.js';
 import { logout } from '../../services/authService.js';
@@ -18,6 +20,13 @@ export default function Header() {
   const stats = useUserStats(user?.uid);
   const now = useNow(60000);
   const streak = currentStreak(stats.data, now);
+  const toReview = useReviewQueueCount(isAdmin);
+
+  // Админ видит число заявок и в заголовке вкладки браузера: «(2) Polygloto».
+  useEffect(() => {
+    const base = document.title.replace(/^\(\d+\+?\) /, '');
+    document.title = toReview > 0 ? `(${toReview > 99 ? '99+' : toReview}) ${base}` : base;
+  }, [toReview]);
 
   async function handleLogout() {
     await logout();
@@ -58,8 +67,13 @@ export default function Header() {
             Рейтинг
           </NavLink>
           {isAdmin && (
-            <NavLink to="/admin" className={navClass}>
+            <NavLink to="/admin" className={navClass} title={toReview > 0 ? 'Есть курсы, ждущие проверки' : undefined}>
               Модерация
+              {toReview > 0 && (
+                <span className={`${styles.badge} ${styles.badgeAlert}`} aria-label={`на проверке: ${toReview}`}>
+                  {toReview > 99 ? '99+' : toReview}
+                </span>
+              )}
             </NavLink>
           )}
         </nav>

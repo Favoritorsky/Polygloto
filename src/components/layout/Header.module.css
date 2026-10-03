@@ -92,6 +92,25 @@
   text-align: center;
 }
 
+/* Заявки на проверку: заметнее, с мягкой пульсацией, чтобы админ сразу увидел. */
+.badgeAlert {
+  background: var(--color-danger);
+  color: var(--color-danger-contrast);
+  animation: badgePulse 2s ease-in-out infinite;
+}
+
+@keyframes badgePulse {
+  50% {
+    box-shadow: 0 0 0 0.3rem var(--color-danger-bg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badgeAlert {
+    animation: none;
+  }
+}
+
 .nav {
   flex-wrap: wrap;
   row-gap: 0.25rem;
