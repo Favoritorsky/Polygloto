@@ -21,6 +21,7 @@ export const COLLECTIONS = Object.freeze({
   LEADERBOARDS: 'leaderboards',
   FOLLOWS: 'follows',
   CURATED_LANGUAGES: 'curatedLanguages',
+  LANGUAGE_CHATS: 'languageChats',
 });
 
 /** catalogMeta/languages — список языков опубликованных курсов (обновляет админ при одобрении). */
@@ -37,6 +38,8 @@ export const SUBCOLLECTIONS = Object.freeze({
   LESSON_COMMENTS: 'lessonComments',
   REACTIONS: 'reactions',
   RATINGS: 'ratings',
+  /** languageChats/{chatId}/messages — сообщения чата языка. */
+  MESSAGES: 'messages',
 });
 
 /** Личные подколлекции users/{uid} (видит только владелец). */
@@ -136,6 +139,9 @@ export const LIMITS = Object.freeze({
   COMMENT_MIN: 1,
   COMMENT_MAX: 2000,
 
+  CHAT_MESSAGE_MIN: 1,
+  CHAT_MESSAGE_MAX: 1000,
+
   REJECTION_REASON_MIN: 5,
   REJECTION_REASON_MAX: 2000,
 
@@ -150,6 +156,7 @@ export const RATE_LIMITS = Object.freeze({
   CREATE_COURSE_SECONDS: 30,
   ADD_COMMENT_SECONDS: 15,
   UPLOAD_AUDIO_SECONDS: 5,
+  CHAT_MESSAGE_SECONDS: 3,
 });
 
 /** Задержка автосохранения черновика (мс). */

@@ -350,10 +350,11 @@ service cloud.firestore {
     match /rateLimits/{uid} {
       allow read: if isSelf(uid);
       allow create, update: if isSelf(uid)
-        && request.resource.data.keys().hasOnly(['createCourse', 'addComment', 'uploadAudio'])
+        && request.resource.data.keys().hasOnly(['createCourse', 'addComment', 'uploadAudio', 'chatMessage'])
         && limitField('createCourse', 30)
         && limitField('addComment', 15)
-        && limitField('uploadAudio', 5);
+        && limitField('uploadAudio', 5)
+        && limitField('chatMessage', 3);
       allow delete: if false;
     }
 
@@ -516,6 +517,21 @@ service cloud.firestore {
         );
     }
 
+    // Отзыв модератором (кнопка «Отозвать»): опубликованный снимок удаляется той же
+    // записью, а курс возвращается автору черновиком — из общего доступа он пропадает,
+    // но не удаляется. Подколлекции снимка браузер админа удаляет заранее.
+    function isWithdrawal(courseId) {
+      let d = request.resource.data;
+      return isAdmin()
+        && resource.data.hasPublishedVersion == true
+        && d.status == 'draft'
+        && d.hasPublishedVersion == false
+        && d.updatedAt == request.time
+        && onlyChanges(['status', 'updatedAt', 'hasPublishedVersion'])
+        && exists(publicPath(courseId))
+        && !existsAfter(publicPath(courseId));
+    }
+
     match /courses/{courseId} {
       allow get: if canManageCourse(resource.data);
       // Запрос обязан фильтровать по authorId == своему uid, по coAuthors
@@ -527,7 +543,8 @@ service cloud.firestore {
       allow update: if (canManageCourse(resource.data) && isActiveUser()
           && (isContentEdit() || isAuthorStatusChange()))
         || (isActiveUser() && isCoAuthorsChange())
-        || isModeration(courseId);
+        || isModeration(courseId)
+        || isWithdrawal(courseId);
       // Подколлекции клиент удаляет до самого курса (см. courseService.deleteCourse).
       // Соавтор удалить курс не может.
       allow delete: if isCourseAuthor(resource.data) && isActiveUser();
@@ -835,6 +852,34 @@ service cloud.firestore {
     match /catalogMeta/{docId} {
       allow read: if true;
       allow write: if isAdmin();
+    }
+
+    // ---------- languageChats/{chatId}/messages/{messageId} — чаты языков ----------
+    // Комната есть у каждого языка, на котором опубликован хотя бы один курс.
+    // Сообщение ссылается на такой курс (courseId), и id комнаты обязан совпасть
+    // с его языком: 'lang-' + languageLower, «/» заменён на «_» (shared/chat.js).
+    // Читают все; пишет незабаненный пользователь не чаще раза в 3 с; изменять
+    // нельзя; удалить может автор сообщения и админ.
+    match /languageChats/{chatId}/messages/{messageId} {
+      function chatCourse() {
+        return get(publicPath(request.resource.data.courseId)).data;
+      }
+
+      allow read: if true;
+      allow create: if isActiveUser()
+        && request.resource.data.keys().hasOnly(['authorId', 'authorName', 'text', 'courseId', 'createdAt'])
+        && request.resource.data.authorId == request.auth.uid
+        && request.resource.data.authorName == userDoc().data.displayName
+        && isStringOfLength(request.resource.data.text, 1, 1000)
+        && request.resource.data.text == request.resource.data.text.trim()
+        && request.resource.data.courseId is string
+        && request.resource.data.courseId.size() > 0 && request.resource.data.courseId.size() <= 128
+        && exists(publicPath(request.resource.data.courseId))
+        && chatId == 'lang-' + chatCourse().languageLower.replace('/', '_')
+        && request.resource.data.createdAt == request.time
+        && rateLimitAfter('chatMessage');
+      allow update: if false;
+      allow delete: if signedIn() && (resource.data.authorId == request.auth.uid || isAdmin());
     }
 
     // ---------- commentAuthors/{commentId} ----------

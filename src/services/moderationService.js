@@ -28,7 +28,7 @@ import {
 import { CATALOG_LANGUAGES_DOC, COLLECTIONS, CONTENT_SUBCOLLECTIONS, COURSE_STATUS, SUBCOLLECTIONS } from '../../shared/schema.js';
 import { collectAudioIds, isValidAudioDataUrl } from '../../shared/audio.js';
 import { buildPublicSnapshot } from '../../shared/publicSnapshot.js';
-import { BATCH_SIZE } from './batchUtils.js';
+import { BATCH_SIZE, deleteAllDocs } from './batchUtils.js';
 import { UserFacingError } from './errors.js';
 import { db } from './firebase.js';
 
@@ -205,15 +205,25 @@ export async function approveCourse(courseId, moderatorId) {
     if (fresh.data().status !== COURSE_STATUS.PENDING_REVIEW || freshSubmitted !== submittedAt) {
       throw new UserFacingError('Автор изменил курс во время проверки. Обновите страницу.');
     }
-    // Счётчики оценок сохраняются между версиями; для первой публикации — нули.
+    // Счётчики оценок сохраняются между версиями; для первой публикации — нули,
+    // а после отзыва (withdrawCourse) — сохранённые при отзыве: голоса читателей остались в ratings.
+    const saved = current.exists() ? null : await tx.get(withdrawnRef(courseId));
     const counters = current.exists()
       ? {}
-      : {
-          likesCount: 0,
-          dislikesCount: 0,
-          score: 0,
-          publishedAt: serverTimestamp(),
-        };
+      : saved?.exists()
+        ? {
+            likesCount: saved.data().likesCount ?? 0,
+            dislikesCount: saved.data().dislikesCount ?? 0,
+            score: (saved.data().likesCount ?? 0) - (saved.data().dislikesCount ?? 0),
+            publishedAt: saved.data().publishedAt ?? serverTimestamp(),
+          }
+        : {
+            likesCount: 0,
+            dislikesCount: 0,
+            score: 0,
+            publishedAt: serverTimestamp(),
+          };
+    if (saved?.exists()) tx.delete(withdrawnRef(courseId));
     tx.set(
       publicRef,
       {
@@ -239,6 +249,51 @@ export async function approveCourse(courseId, moderatorId) {
     tx.set(metaRef, {
       items: [...items.values()].sort((a, b) => a.name.localeCompare(b.name, 'ru')),
     });
+  });
+}
+
+/** catalogMeta/withdrawn-{id}: счётчики оценок отозванного курса до повторной публикации. */
+const withdrawnRef = (courseId) => doc(db, COLLECTIONS.CATALOG_META, `withdrawn-${courseId}`);
+
+/**
+ * «Отозвать»: курс пропадает из общего доступа, но не удаляется — у автора он
+ * остаётся черновиком (status draft, hasPublishedVersion false) и может быть
+ * снова отправлен на проверку. Подколлекции снимка удаляются заранее, сам
+ * снимок — одной транзакцией со сменой статуса (это требует правило isWithdrawal)
+ * и пересчётом языков каталога. Комментарии и голоса остаются под courses/{id}
+ * (без снимка их никто не видит), счётчики голосов сохраняются в catalogMeta.
+ */
+export async function withdrawCourse(courseId) {
+  const courseRef = doc(db, COLLECTIONS.COURSES, courseId);
+  const publicRef = doc(db, COLLECTIONS.PUBLIC_COURSES, courseId);
+  const metaRef = doc(db, COLLECTIONS.CATALOG_META, CATALOG_LANGUAGES_DOC);
+
+  const publicSnap = await getDoc(publicRef);
+  if (!publicSnap.exists()) throw new UserFacingError('Курс уже снят с публикации.');
+  const published = publicSnap.data();
+  for (const name of [...CONTENT_SUBCOLLECTIONS, SUBCOLLECTIONS.AUDIO, SUBCOLLECTIONS.TASK_STATS]) {
+    await deleteAllDocs(collection(publicRef, name));
+  }
+  const key = published.languageLower;
+  const left = key
+    ? (await getCountFromServer(query(collection(db, COLLECTIONS.PUBLIC_COURSES), where('languageLower', '==', key)))).data().count - 1
+    : 0;
+
+  await runTransaction(db, async (tx) => {
+    const [course, metaSnap] = await Promise.all([tx.get(courseRef), tx.get(metaRef)]);
+    tx.set(withdrawnRef(courseId), {
+      likesCount: published.likesCount ?? 0,
+      dislikesCount: published.dislikesCount ?? 0,
+      publishedAt: published.publishedAt ?? null,
+    });
+    tx.delete(publicRef);
+    if (course.exists()) {
+      tx.update(courseRef, { status: COURSE_STATUS.DRAFT, hasPublishedVersion: false, updatedAt: serverTimestamp() });
+    }
+    if (key && metaSnap.exists()) {
+      const items = (metaSnap.data().items ?? []).flatMap((i) => (i.key !== key ? [i] : left > 0 ? [{ ...i, count: left }] : []));
+      tx.set(metaRef, { items });
+    }
   });
 }
 

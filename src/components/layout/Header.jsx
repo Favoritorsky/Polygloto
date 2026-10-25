@@ -63,6 +63,9 @@ export default function Header() {
               )}
             </NavLink>
           )}
+          <NavLink to="/chats" className={navClass}>
+            Чаты
+          </NavLink>
           <NavLink to="/leaderboard" className={navClass}>
             Рейтинг
           </NavLink>

@@ -14,7 +14,9 @@ export const COURSE_EXPORT_VERSION = 1;
 export const IMPORT_LIMITS = Object.freeze({
   FILE_MAX_BYTES: 15 * 1024 * 1024,
   REFERENCE_MAX: 200,
-  WORDS_MAX: 3000,
+  WORDS_MAX: 25000,
+  /** С этого размера словаря предупреждаем о дневном лимите записей Firebase Spark (20 000 в сутки). */
+  WORDS_WARN: 8000,
   AUDIO_MAX: 100,
 });
 
@@ -115,6 +117,12 @@ export function parseCourseImport(text) {
     })
     .filter(Boolean);
   if (skippedWords) warnings.push(`Пропущено слов с ошибками: ${skippedWords}.`);
+  if (dictionary.length > IMPORT_LIMITS.WORDS_WARN) {
+    warnings.push(
+      `Большой словарь: ${dictionary.length} слов. На бесплатном тарифе Firebase можно записать около 20 000 документов в сутки, ` +
+        'а импорт и публикация пишут каждое слово — при нехватке лимита повторите на следующий день.',
+    );
+  }
 
   const used = collectAudioIds([lessons, reference, dictionary]);
   const audioSeen = new Set();

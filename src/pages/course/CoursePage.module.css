@@ -64,6 +64,12 @@
   padding: 3rem 1rem;
 }
 
+.links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 1.25rem;
+}
+
 .games {
   display: inline-block;
   margin-top: 0.5rem;

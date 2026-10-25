@@ -23,6 +23,8 @@ import CoursePage from './pages/course/CoursePage.jsx';
 import CourseEditorPage from './pages/editor/CourseEditorPage.jsx';
 import AdminPage from './pages/admin/AdminPage.jsx';
 import ReviewCoursePage from './pages/admin/ReviewCoursePage.jsx';
+import ChatsPage from './pages/chat/ChatsPage.jsx';
+import LanguageChatPage from './pages/chat/LanguageChatPage.jsx';
 
 export default function App() {
   if (!isFirebaseConfigured) return <ConfigMissingPage />;
@@ -103,6 +105,8 @@ export default function App() {
           <Route path="demo" element={<DemoCoursePage />} />
           <Route path="course/:courseId" element={<CoursePage />} />
           <Route path="course/:courseId/games" element={<GamesPage />} />
+          <Route path="chats" element={<ChatsPage />} />
+          <Route path="chats/:language" element={<LanguageChatPage />} />
           <Route path="users/:uid" element={<ProfilePage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>

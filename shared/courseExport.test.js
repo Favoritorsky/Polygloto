@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildCourseExport, exportFileName, parseCourseImport } from './courseExport.js';
+import { IMPORT_LIMITS, buildCourseExport, exportFileName, parseCourseImport } from './courseExport.js';
 
 const AUDIO = 'data:audio/ogg;base64,T2dnUw==';
 const course = {
@@ -62,6 +62,18 @@ describe('экспорт', () => {
 
 describe('импорт', () => {
   const base = { format: 'polygloto-course', version: 1, course: { title: 'Курс', language: 'Язык' }, lessons: [], dictionary: [] };
+  const words = (n) =>
+    Array.from({ length: n }, (_, i) => ({ id: `w${i}`, word: `слово${i}`, translation: `перевод ${i}`, partOfSpeech: 'noun', examples: [], notes: '' }));
+  it('словарь до 25 000 слов, с 8 000 — предупреждение о лимите записей', () => {
+    expect(IMPORT_LIMITS.WORDS_MAX).toBe(25000);
+    const small = parseCourseImport(JSON.stringify({ ...base, dictionary: words(5003) })).data;
+    expect(small.dictionary).toHaveLength(5003);
+    expect(small.warnings).toEqual([]);
+    const big = parseCourseImport(JSON.stringify({ ...base, dictionary: words(25001) })).data;
+    expect(big.dictionary).toHaveLength(25000);
+    expect(big.warnings.join(' ')).toMatch(/взяты первые 25000 из 25001/);
+    expect(big.warnings.join(' ')).toMatch(/20 000 документов в сутки/);
+  });
   it('понятные ошибки для чужих и битых файлов', () => {
     expect(parseCourseImport('{').error).toMatch(/не JSON/);
     expect(parseCourseImport('{"a":1}').error).toMatch(/не файл курса/);

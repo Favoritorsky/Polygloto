@@ -3,6 +3,7 @@ import CoAuthorsLine from '../../components/course/CoAuthorsLine.jsx';
 import { useCallback, useMemo, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import RatingButtons from '../../components/course/RatingButtons.jsx';
+import { chatPath } from '../../../shared/chat.js';
 import DictionaryBrowser from '../../components/dictionary/DictionaryBrowser.jsx';
 import AsyncState from '../../components/ui/AsyncState.jsx';
 import Tabs from '../../components/ui/Tabs.jsx';
@@ -119,11 +120,18 @@ export default function CoursePage() {
                       <li>Уроков: {course.lessonsCount ?? 0}</li>
                       <li>Слов в словаре: {course.wordsCount ?? 0}</li>
                     </ul>
-                    {(course.wordsCount ?? 0) >= 4 && (
-                      <Link to={`/course/${courseId}/games`} className={styles.games}>
-                        🎮 Мини-игры по словарю
-                      </Link>
-                    )}
+                    <div className={styles.links}>
+                      {course.languageLower && (
+                        <Link to={chatPath(course.languageLower, courseId)} className={styles.games}>
+                          💬 Чат языка «{course.language}»
+                        </Link>
+                      )}
+                      {(course.wordsCount ?? 0) >= 4 && (
+                        <Link to={`/course/${courseId}/games`} className={styles.games}>
+                          🎮 Мини-игры по словарю
+                        </Link>
+                      )}
+                    </div>
                   </div>
                   <RatingButtons course={course} />
                 </header>
