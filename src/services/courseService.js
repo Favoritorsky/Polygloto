@@ -147,7 +147,7 @@ export async function findUserByProfileRef(input) {
 /** Сохраняет метаданные курса (только в статусе draft — см. правила). */
 export function updateCourseMeta(courseId, patch) {
   const allowed = {};
-  for (const key of ['title', 'language', 'languageCategory', 'languageId', 'description', 'categories']) {
+  for (const key of ['title', 'language', 'languageCategory', 'languageId', 'description', 'categories', 'allowDownload']) {
     if (patch[key] !== undefined) allowed[key] = typeof patch[key] === 'string' ? patch[key].trim() : patch[key];
   }
   return updateDoc(courseRef(courseId), { ...allowed, updatedAt: serverTimestamp() });

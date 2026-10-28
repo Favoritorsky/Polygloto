@@ -43,6 +43,43 @@ export async function exportCourse(courseId) {
   return { fileName: exportFileName(course.title), json: JSON.stringify(file, null, 2) };
 }
 
+/** Отдаёт браузеру JSON как файл для сохранения. */
+export function downloadJson(fileName, json) {
+  const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = fileName;
+  // Ссылка должна быть в документе, иначе часть браузеров игнорирует имя файла.
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/**
+ * Файл экспорта опубликованной версии — для читателей, если автор разрешил
+ * скачивание. course — снимок publicCourses/{id}; dictionary — уже загруженный
+ * словарь страницы курса (повторно не читается, чтобы не тратить чтения базы).
+ */
+export async function exportPublicCourse(courseId, course, dictionary) {
+  if (!course.allowDownload) throw new UserFacingError('Автор не разрешил скачивать этот курс.');
+  const ref = doc(db, COLLECTIONS.PUBLIC_COURSES, courseId);
+  const read = (name) => getDocs(collection(ref, name));
+  const [lessons, reference, audio] = await Promise.all([
+    read(SUBCOLLECTIONS.LESSONS),
+    read(SUBCOLLECTIONS.REFERENCE),
+    read(SUBCOLLECTIONS.AUDIO),
+  ]);
+  const file = buildCourseExport({
+    course,
+    lessons: ordered(lessons.docs, course.lessonOrder),
+    reference: ordered(reference.docs, course.referenceOrder),
+    dictionary: dictionary ?? [],
+    audio: audio.docs.map((d) => ({ id: d.id, ...d.data() })),
+  });
+  return { fileName: exportFileName(course.title), json: JSON.stringify(file, null, 2) };
+}
+
 /** Читает и проверяет выбранный файл. Возвращает очищенные данные (с warnings). */
 export async function readImportFile(file) {
   if (file.size > IMPORT_LIMITS.FILE_MAX_BYTES) throw new UserFacingError('Файл больше 15 МБ.');

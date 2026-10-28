@@ -476,7 +476,8 @@ service cloud.firestore {
       return resource.data.status == 'draft'
         && request.resource.data.status == 'draft'
         && onlyChanges(['title', 'language', 'languageCategory', 'languageId', 'description', 'categories',
-                        'lessonOrder', 'referenceOrder', 'updatedAt'])
+                        'lessonOrder', 'referenceOrder', 'allowDownload', 'updatedAt'])
+        && request.resource.data.get('allowDownload', false) is bool
         && request.resource.data.updatedAt == request.time
         && validCourseMeta(request.resource.data);
     }

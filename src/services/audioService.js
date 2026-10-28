@@ -21,12 +21,18 @@ function readAsDataUrl(file) {
   });
 }
 
-/** Загружает файл в черновик курса. Возвращает id аудио. */
-export async function uploadCourseAudio(uid, courseId, file) {
+/** Проверяет аудиофайл и читает его в data URL (без записи в базу — так им пользуется и локальный курс). */
+export async function readAudioFile(file) {
   const { mime, error } = validateAudioFile(file);
   if (error) throw new UserFacingError(error);
   const dataUrl = withAudioMime(await readAsDataUrl(file), mime);
   if (!isValidAudioDataUrl(dataUrl)) throw new UserFacingError('Файл слишком большой или повреждён.');
+  return dataUrl;
+}
+
+/** Загружает файл в черновик курса. Возвращает id аудио. */
+export async function uploadCourseAudio(uid, courseId, file) {
+  const dataUrl = await readAudioFile(file);
   const ref = doc(collection(db, COLLECTIONS.COURSES, courseId, SUBCOLLECTIONS.AUDIO));
   await withRateLimit(uid, 'uploadAudio', RATE_LIMITS.UPLOAD_AUDIO_SECONDS, async () => {
     const batch = writeBatch(db);

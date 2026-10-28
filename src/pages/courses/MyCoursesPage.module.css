@@ -76,3 +76,8 @@
     flex-basis: 100%;
   }
 }
+
+.openLink {
+  align-self: center;
+  font-weight: 600;
+}

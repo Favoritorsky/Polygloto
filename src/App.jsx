@@ -13,6 +13,7 @@ import RegisterPage from './pages/auth/RegisterPage.jsx';
 import MyCoursesPage from './pages/courses/MyCoursesPage.jsx';
 import CatalogPage from './pages/catalog/CatalogPage.jsx';
 import DemoCoursePage from './pages/demo/DemoCoursePage.jsx';
+import LocalCoursePage from './pages/local/LocalCoursePage.jsx';
 import ReviewPage from './pages/review/ReviewPage.jsx';
 import ProgressPage from './pages/progress/ProgressPage.jsx';
 import LeaderboardPage from './pages/leaderboard/LeaderboardPage.jsx';
@@ -103,6 +104,7 @@ export default function App() {
           />
           <Route path="catalog" element={<CatalogPage />} />
           <Route path="demo" element={<DemoCoursePage />} />
+          <Route path="open" element={<LocalCoursePage />} />
           <Route path="course/:courseId" element={<CoursePage />} />
           <Route path="course/:courseId/games" element={<GamesPage />} />
           <Route path="chats" element={<ChatsPage />} />

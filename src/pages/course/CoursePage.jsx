@@ -14,6 +14,8 @@ import { subscribeToDictionary } from '../../services/dictionaryService.js';
 import { subscribeToPublicCourse } from '../../services/publicCourseService.js';
 import { addWordsToReview, subscribeToCourseCards } from '../../services/srsService.js';
 import ReviewButton from '../../components/review/ReviewButton.jsx';
+import { downloadJson, exportPublicCourse } from '../../services/courseTransferService.js';
+import { toUserMessage } from '../../services/errors.js';
 import CommentsSection from './CommentsSection.jsx';
 import { CoursePageContext } from './coursePageContext.js';
 import SectionReader from './SectionReader.jsx';
@@ -44,6 +46,21 @@ export default function CoursePage() {
     course ? courseId : null,
   );
   const entries = dictionarySub.data;
+
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState('');
+  async function handleDownload() {
+    setDownloading(true);
+    setDownloadError('');
+    try {
+      const { fileName, json } = await exportPublicCourse(courseId, course, entries);
+      downloadJson(fileName, json);
+    } catch (err) {
+      setDownloadError(toUserMessage(err));
+    } finally {
+      setDownloading(false);
+    }
+  }
 
   // Повторение: какие слова курса уже у читателя в карточках.
   const { user } = useAuth();
@@ -131,7 +148,18 @@ export default function CoursePage() {
                           🎮 Мини-игры по словарю
                         </Link>
                       )}
+                      {course.allowDownload && (
+                        <button
+                          type="button"
+                          className={`${styles.games} ${styles.linkButton}`}
+                          onClick={handleDownload}
+                          disabled={downloading || !entries}
+                        >
+                          {downloading ? '⏳ Собираю файл…' : '⬇ Скачать курс (JSON)'}
+                        </button>
+                      )}
                     </div>
+                    {downloadError && <p className={styles.downloadError}>{downloadError}</p>}
                   </div>
                   <RatingButtons course={course} />
                 </header>

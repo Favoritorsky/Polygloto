@@ -60,3 +60,8 @@
     flex: 1 1 8rem;
   }
 }
+
+.openFile {
+  margin: -0.5rem 0 1rem;
+  color: var(--color-text-muted);
+}

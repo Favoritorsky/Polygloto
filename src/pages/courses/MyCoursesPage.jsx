@@ -56,6 +56,9 @@ export default function MyCoursesPage() {
           <Button variant="secondary" onClick={() => fileRef.current?.click()} disabled={isBanned || Boolean(importState?.progress)}>
             Импорт из JSON
           </Button>
+          <Link to="/open" className={styles.openLink} title="Пройти или поправить курс из файла, ничего не записывая на сайт">
+            Открыть файл без импорта
+          </Link>
           <input ref={fileRef} type="file" accept=".json,application/json" hidden onChange={handleImport} aria-label="Файл курса" />
           <Button onClick={() => setCreating(true)} disabled={isBanned}>
             + Новый курс

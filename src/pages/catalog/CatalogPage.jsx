@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { catalogLanguageFilter, CONLANGS_FILTER } from '../../../shared/languages.js';
 import { LIMITS, normalizeText } from '../../../shared/schema.js';
 import { CATALOG_SORTS, DEFAULT_SORT } from '../../catalog/catalogQuery.js';
@@ -75,6 +75,9 @@ export default function CatalogPage() {
   return (
     <div className={styles.page}>
       <h1>Каталог курсов</h1>
+      <p className={styles.openFile}>
+        Есть курс в файле? <Link to="/open">Открыть файл курса</Link> — без входа и без записи на сайт.
+      </p>
       <form className={styles.filters} role="search" onSubmit={(e) => e.preventDefault()}>
         <label className={styles.search}>
           <span className="visually-hidden">Поиск по названию и языку</span>

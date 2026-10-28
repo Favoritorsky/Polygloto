@@ -69,6 +69,8 @@ export function buildPublicSnapshot({ course, author, lessons, reference, dictio
       languageId: course.languageCategory === 'official' && course.languageId ? course.languageId : null,
       description: String(course.description ?? '').slice(0, LIMITS.COURSE_DESCRIPTION_MAX),
       categories,
+      // Автор разрешил читателям скачивать курс в JSON (настройки курса → «Экспорт»).
+      allowDownload: course.allowDownload === true,
       lessonOrder: cleanOrder(course.lessonOrder, cleanLessons.map((l) => l.id)),
       referenceOrder: cleanOrder(course.referenceOrder, cleanReference.map((r) => r.id)),
       titleLower: normalizeText(title),

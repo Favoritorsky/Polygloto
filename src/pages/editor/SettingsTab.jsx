@@ -11,7 +11,7 @@ import SaveIndicator from '../../components/ui/SaveIndicator.jsx';
 import { useAutosave } from '../../hooks/useAutosave.js';
 import { useCuratedLanguages } from '../../hooks/useCuratedLanguages.js';
 import { deleteCourse, updateCourseMeta, validateCourseMeta } from '../../services/courseService.js';
-import { exportCourse } from '../../services/courseTransferService.js';
+import { downloadJson, exportCourse } from '../../services/courseTransferService.js';
 import { toUserMessage } from '../../services/errors.js';
 import CoAuthorsSection from './CoAuthorsSection.jsx';
 import { useCourseEditor } from './courseEditorContext.js';
@@ -28,6 +28,7 @@ export default function SettingsTab() {
     languageChoice: null,
     description: course.description ?? '',
     categories: course.categories ?? [],
+    allowDownload: course.allowDownload === true,
   }));
   const [errors, setErrors] = useState({});
   const languages = useCuratedLanguages();
@@ -76,15 +77,7 @@ export default function SettingsTab() {
     try {
       await flush?.();
       const { fileName, json } = await exportCourse(courseId);
-      const url = URL.createObjectURL(new Blob([json], { type: 'application/json' }));
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = fileName;
-      // Ссылка должна быть в документе, иначе часть браузеров игнорирует имя файла.
-      document.body.append(link);
-      link.click();
-      link.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      downloadJson(fileName, json);
     } catch (err) {
       setExportError(toUserMessage(err));
     } finally {
@@ -166,6 +159,19 @@ export default function SettingsTab() {
         <Button variant="secondary" onClick={handleExport} loading={exporting}>
           Скачать курс (JSON)
         </Button>
+        <label className={styles.checkbox}>
+          <input
+            type="checkbox"
+            checked={form.allowDownload}
+            disabled={readOnly}
+            onChange={(e) => change({ allowDownload: e.target.checked })}
+          />
+          Разрешить читателям скачивать опубликованный курс в JSON
+        </label>
+        <p className={styles.hint}>
+          Читатели увидят кнопку «Скачать курс» и смогут открыть файл через «Открыть файл курса» — без входа и без интернета. Изменение
+          вступит в силу после следующей проверки курса.
+        </p>
       </section>
 
       <CoAuthorsSection />

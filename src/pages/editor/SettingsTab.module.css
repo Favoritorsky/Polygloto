@@ -57,3 +57,18 @@
 .coAuthorForm > :first-child {
   flex: 1 1 280px;
 }
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.hint {
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+  margin: 0.35rem 0 0;
+}
