@@ -91,8 +91,28 @@ export async function loadCourseContent(courseId, course) {
   };
 }
 
-/** Пишет подколлекции снимка: удаляет устаревшие документы и записывает новые. */
-async function writeSnapshotSections(publicRef, snapshot) {
+/** Данные документа в сравнимом виде: ключи по алфавиту, метки времени — числом. */
+function canonical(value) {
+  if (Array.isArray(value)) return value.map(canonical);
+  if (value && typeof value.toMillis === 'function') return { $time: value.toMillis() };
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.keys(value)
+        .sort()
+        .map((k) => [k, canonical(value[k])]),
+    );
+  }
+  return value;
+}
+
+const sameData = (a, b) => JSON.stringify(canonical(a)) === JSON.stringify(canonical(b));
+
+/**
+ * Пишет подколлекции снимка: удаляет устаревшие документы и записывает новые.
+ * Неизменившиеся документы не переписываются — иначе повторная публикация
+ * (например, после смены названия) заново пишет весь словарь в тысячи слов.
+ */
+async function writeSnapshotSections(publicRef, snapshot, onProgress) {
   const sections = {
     [SUBCOLLECTIONS.LESSONS]: snapshot.lessons,
     [SUBCOLLECTIONS.REFERENCE]: snapshot.reference,
@@ -103,10 +123,14 @@ async function writeSnapshotSections(publicRef, snapshot) {
     const target = collection(publicRef, name);
     const keep = new Set(sections[name].map((d) => d.id));
     const existing = await getDocs(target);
+    const current = new Map(existing.docs.map((d) => [d.id, d.data()]));
     existing.docs.filter((d) => !keep.has(d.id)).forEach((d) => ops.push((b) => b.delete(d.ref)));
-    sections[name].forEach(({ id, data }) => ops.push((b) => b.set(doc(target, id), data)));
+    sections[name]
+      .filter(({ id, data }) => !current.has(id) || !sameData(current.get(id), data))
+      .forEach(({ id, data }) => ops.push((b) => b.set(doc(target, id), data)));
   }
   for (let i = 0; i < ops.length; i += BATCH_SIZE) {
+    onProgress(`Публикую содержимое: ${Math.min(i + BATCH_SIZE, ops.length)} из ${ops.length}…`);
     const batch = writeBatch(db);
     ops.slice(i, i + BATCH_SIZE).forEach((op) => op(batch));
     await batch.commit();
@@ -118,14 +142,15 @@ async function writeSnapshotSections(publicRef, snapshot) {
  * контент, и удаляет из снимка больше не нужные. Файлы по одному: каждый — до
  * полумегабайта, пакет таких записей упёрся бы в лимит размера запроса.
  */
-async function copySnapshotAudio(courseRef, publicRef, snapshot) {
+async function copySnapshotAudio(courseRef, publicRef, snapshot, onProgress) {
   const ids = collectAudioIds([snapshot.lessons, snapshot.reference, snapshot.dictionary]);
   const target = collection(publicRef, SUBCOLLECTIONS.AUDIO);
   const existing = await getDocs(target);
   const present = new Set(existing.docs.map((d) => d.id));
   for (const d of existing.docs) if (!ids.has(d.id)) await deleteDoc(d.ref);
-  for (const id of ids) {
-    if (present.has(id)) continue; // файлы не меняются (update запрещён), копировать заново не нужно
+  const missing = [...ids].filter((id) => !present.has(id)); // файлы не меняются (update запрещён), копировать заново не нужно
+  for (const [i, id] of missing.entries()) {
+    onProgress(`Копирую аудио: ${i + 1} из ${missing.length}…`);
     const source = await getDoc(doc(courseRef, SUBCOLLECTIONS.AUDIO, id));
     if (source.exists() && isValidAudioDataUrl(source.data().dataUrl)) {
       await setDoc(doc(target, id), { dataUrl: source.data().dataUrl });
@@ -157,7 +182,7 @@ async function languageCounts(courseId, previous, meta) {
  * в той же структуре), а метаданные снимка, статус курса и список языков —
  * одной транзакцией, только если курс всё ещё на проверке и не был переотправлен.
  */
-export async function approveCourse(courseId, moderatorId) {
+export async function approveCourse(courseId, moderatorId, onProgress = () => {}) {
   const courseRef = doc(db, COLLECTIONS.COURSES, courseId);
   const publicRef = doc(db, COLLECTIONS.PUBLIC_COURSES, courseId);
   const metaRef = doc(db, COLLECTIONS.CATALOG_META, CATALOG_LANGUAGES_DOC);
@@ -168,6 +193,7 @@ export async function approveCourse(courseId, moderatorId) {
   if (course.status !== COURSE_STATUS.PENDING_REVIEW) throw new UserFacingError('Курс уже не на проверке.');
   const submittedAt = course.submittedAt?.toMillis?.() ?? null;
 
+  onProgress('Читаю курс…');
   const read = async (name) =>
     (await getDocs(collection(courseRef, name))).docs.map((d) => ({
       id: d.id,
@@ -194,8 +220,10 @@ export async function approveCourse(courseId, moderatorId) {
   }
   const previous = previousSnap.exists() ? previousSnap.data() : null;
 
-  await writeSnapshotSections(publicRef, snapshot);
-  await copySnapshotAudio(courseRef, publicRef, snapshot);
+  onProgress('Сравниваю с опубликованной версией…');
+  await writeSnapshotSections(publicRef, snapshot, onProgress);
+  await copySnapshotAudio(courseRef, publicRef, snapshot, onProgress);
+  onProgress('Завершаю публикацию…');
   const counts = await languageCounts(courseId, previous, snapshot.meta);
 
   await runTransaction(db, async (tx) => {

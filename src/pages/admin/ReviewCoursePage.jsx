@@ -45,6 +45,7 @@ export default function ReviewCoursePage() {
   const [rejecting, setRejecting] = useState(false);
   const [reason, setReason] = useState('');
   const [busy, setBusy] = useState(null);
+  const [progress, setProgress] = useState('');
   const [error, setError] = useState('');
 
   const courseSub = useSubscription((onData, onError) => subscribeToCourse(courseId, onData, onError), courseId);
@@ -61,12 +62,13 @@ export default function ReviewCoursePage() {
     }
     setBusy(kind);
     try {
-      if (kind === 'approve') await approveCourse(courseId, user.uid);
+      if (kind === 'approve') await approveCourse(courseId, user.uid, setProgress);
       else await rejectCourse(courseId, reason.trim());
       navigate('/admin', { replace: true });
     } catch (err) {
       setError(toUserMessage(err));
       setBusy(null);
+      setProgress('');
     }
   }
 
@@ -132,6 +134,7 @@ export default function ReviewCoursePage() {
                   <Button variant="secondary" onClick={() => setRejecting(true)} disabled={Boolean(busy)}>
                     Отклонить…
                   </Button>
+                  {busy === 'approve' && progress && <span className={styles.muted}>{progress}</span>}
                 </div>
               )}
             </section>
