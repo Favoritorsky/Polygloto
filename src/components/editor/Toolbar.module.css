@@ -9,7 +9,7 @@
   border-bottom: none;
   border-radius: var(--radius-md) var(--radius-md) 0 0;
   position: sticky;
-  top: 3.6rem;
+  top: calc(var(--header-height, 0px) + var(--tabs-height, 0px));
   z-index: 10;
 }
 

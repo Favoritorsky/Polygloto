@@ -136,7 +136,7 @@ export default function CoursePage() {
                   <RatingButtons course={course} />
                 </header>
 
-                <Tabs tabs={TABS} active={tab} onChange={changeTab} label="Разделы курса" />
+                <Tabs tabs={TABS} active={tab} onChange={changeTab} label="Разделы курса" sticky />
                 <div className={styles.body}>
                   {tab === 'lessons' && <SectionReader key="lessons" kind="lessons" />}
                   {tab === 'reference' && <SectionReader key="reference" kind="reference" />}

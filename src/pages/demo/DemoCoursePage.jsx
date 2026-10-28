@@ -49,7 +49,7 @@ export default function DemoCoursePage() {
         </ul>
       </header>
 
-      <Tabs tabs={TABS} active={tab} onChange={(id) => setParams(id === 'lessons' ? {} : { tab: id })} label="Разделы курса" />
+      <Tabs tabs={TABS} active={tab} onChange={(id) => setParams(id === 'lessons' ? {} : { tab: id })} label="Разделы курса" sticky />
       <div className={styles.body}>
         {tab === 'lessons' && <Sections sections={DEMO_SECTIONS.lessons} dictionary={dictionary} />}
         {tab === 'reference' && <Sections sections={DEMO_SECTIONS.reference} dictionary={dictionary} />}

@@ -9,6 +9,11 @@
   .layout {
     grid-template-columns: minmax(0, 1fr);
   }
+
+  .sidebar {
+    position: static;
+    max-height: none;
+  }
 }
 
 .sidebar {
@@ -17,7 +22,12 @@
   border-radius: var(--radius-md);
   padding: 0.75rem;
   position: sticky;
-  top: 4.5rem;
+  top: calc(var(--header-height, 0px) + var(--tabs-height, 0px) + 0.75rem);
+  /* Длинный список уроков прокручивается сам, а не уезжает вместе со страницей. */
+  max-height: calc(100vh - var(--header-height, 0px) - var(--tabs-height, 0px) - 1.5rem);
+  overflow-y: auto;
+  /* Колесо над списком крутит только список: дойдя до края, страница не поедет. */
+  overscroll-behavior: contain;
 }
 
 .list {

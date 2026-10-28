@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Link, NavLink, useNavigate } from 'react-router-dom';
 import Avatar from '../profile/Avatar.jsx';
 import ThemeToggle from './ThemeToggle.jsx';
@@ -7,6 +7,7 @@ import { useAuth } from '../../hooks/useAuth.js';
 import { useDueCount } from '../../hooks/useDueCount.js';
 import { useReviewQueueCount } from '../../hooks/useReviewQueueCount.js';
 import { useNow, useUserStats } from '../../hooks/useMyStats.js';
+import { useHeightVar } from '../../hooks/useHeightVar.js';
 import { currentStreak } from '../../../shared/gamification.js';
 import { logout } from '../../services/authService.js';
 import styles from './Header.module.css';
@@ -21,6 +22,8 @@ export default function Header() {
   const now = useNow(60000);
   const streak = currentStreak(stats.data, now);
   const toReview = useReviewQueueCount(isAdmin);
+  const headerRef = useRef(null);
+  useHeightVar(headerRef, '--header-height');
 
   // Админ видит число заявок и в заголовке вкладки браузера: «(2) Polygloto».
   useEffect(() => {
@@ -34,7 +37,7 @@ export default function Header() {
   }
 
   return (
-    <header className={styles.header}>
+    <header className={styles.header} ref={headerRef}>
       <div className={styles.inner}>
         <Link to="/" className={styles.logo}>
           Polygloto

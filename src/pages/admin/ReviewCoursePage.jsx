@@ -137,7 +137,7 @@ export default function ReviewCoursePage() {
             </section>
           )}
 
-          <Tabs tabs={TABS} active={tab} onChange={setTab} label="Содержимое курса" />
+          <Tabs tabs={TABS} active={tab} onChange={setTab} label="Содержимое курса" sticky />
           <AudioSourceProvider courseId={courseId}>
             <AsyncState loading={content.loading} error={content.error} onRetry={content.retry}>
               {content.data && tab === 'lessons' && (

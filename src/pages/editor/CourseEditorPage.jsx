@@ -176,7 +176,7 @@ export default function CourseEditorPage() {
               )}
               {actionError && <Alert tone="error">{actionError}</Alert>}
 
-              <Tabs tabs={TABS} active={tab} onChange={setTab} label="Разделы курса" />
+              <Tabs tabs={TABS} active={tab} onChange={setTab} label="Разделы курса" sticky />
               {tab === 'lessons' && <SectionsTab kind="lessons" key="lessons" />}
               {tab === 'reference' && <SectionsTab kind="reference" key="reference" />}
               {tab === 'dictionary' && <DictionaryTab />}

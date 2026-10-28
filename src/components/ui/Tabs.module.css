@@ -25,3 +25,17 @@
   color: var(--color-primary);
   border-bottom-color: var(--color-primary);
 }
+
+/* Липкие вкладки: фон под ними, чтобы прокручиваемое содержимое не просвечивало. */
+.stickyWrap {
+  position: sticky;
+  top: var(--header-height, 0px);
+  z-index: 15;
+  background: color-mix(in srgb, var(--color-bg) 82%, transparent);
+  backdrop-filter: blur(8px);
+  margin-bottom: 1.25rem;
+}
+
+.stickyWrap .tabs {
+  margin-bottom: 0;
+}
